@@ -93,3 +93,48 @@ def field_state(field_id: str, db: Session = Depends(get_db)):
 @router.get("/fields/{field_id}/evidence")
 def field_evidence(field_id: str, db: Session = Depends(get_db)):
     return [
+        {
+            "id": e.id,
+            "type": e.type,
+            "source_type": e.source_type,
+            "source_id": e.source_id,
+            "predicate": e.predicate,
+            "value": e.value,
+            "confidence": e.confidence,
+            "observed_at": e.observed_at.isoformat()
+        }
+        for e in db.query(Evidence).filter(Evidence.field_id == field_id).order_by(Evidence.observed_at.desc()).all()
+    ]
+
+@router.post("/fields/{field_id}/evidence")
+def create_evidence(field_id: str, payload: EvidenceCreate, db: Session = Depends(get_db)):
+    if not db.query(Field).filter(Field.id == field_id).first():
+        raise HTTPException(404, "Field not found")
+    e = Evidence(field_id=field_id, **payload.model_dump())
+    db.add(e)
+    db.commit()
+    db.refresh(e)
+    cognitive.audit(db, "evidence", e.id, "EVIDENCE_CREATED", {"predicate": e.predicate, "value": e.value})
+    db.commit()
+    return {"id": e.id, "status": e.status}
+
+@router.post("/fields/{field_id}/observations")
+def farmer_observation(field_id: str, payload: FarmerObservation, db: Session = Depends(get_db)):
+    if not db.query(Field).filter(Field.id == field_id).first():
+        raise HTTPException(404, "Field not found")
+    parsed = llm.extract_observation(payload.message)
+    e = Evidence(
+        field_id=field_id,
+        type="FARMER_OBSERVATION",
+        source_type="FARMER",
+        source_id="farmer-ui",
+        subject=field_id,
+        predicate=parsed.predicate,
+        value=parsed.value,
+        observed_at=datetime.utcnow(),
+        confidence=parsed.confidence,
+        provenance={"extractor": "llm-interface"},
+        raw_payload={"message": payload.message}
+    )
+    db.add(e)
+    db.commit()
