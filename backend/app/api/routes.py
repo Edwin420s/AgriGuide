@@ -218,3 +218,53 @@ def delete_field_rule(field_id: str, rule_id: str, db: Session = Depends(get_db)
     return {"deleted": True, "rule_id": rule_id}
 
 # --- Decision, Audit & Diff ---
+
+@router.post("/fields/{field_id}/decide")
+def decide(field_id: str, payload: DecisionRequest, db: Session = Depends(get_db)):
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    d, state, result = cognitive.decide(db, f, payload.trigger, payload.goal)
+    diff = cognitive.get_decision_diff(db, d.id) if d.supersedes_id else None
+    return {
+        "decision_id": d.id,
+        "recommendation": d.recommendation,
+        "confidence": d.confidence,
+        "reason": d.reason,
+        "supersedes_id": d.supersedes_id,
+        "state_version": db.query(Decision).filter(Decision.field_id == field_id).count(),
+        "audit_available": True,
+        "rules": result.reasoning.rules,
+        "omega_mode": result.mode,
+        "source": result.reasoning.source,
+        "counterfactuals": result.reasoning.counterfactuals,
+        "state": state,
+        "diff": diff
+    }
+
+@router.get("/fields/{field_id}/decisions")
+def decisions(field_id: str, db: Session = Depends(get_db)):
+    return [
+        {
+            "id": d.id,
+            "recommendation": d.recommendation,
+            "confidence": d.confidence,
+            "reason": d.reason,
+            "supersedes_id": d.supersedes_id,
+            "created_at": d.created_at.isoformat()
+        }
+        for d in db.query(Decision).filter(Decision.field_id == field_id).order_by(Decision.created_at.desc()).all()
+    ]
+
+@router.get("/decisions/{decision_id}/audit")
+def audit(decision_id: str, db: Session = Depends(get_db)):
+    d = db.query(Decision).filter(Decision.id == decision_id).first()
+    if not d:
+        raise HTTPException(404, "Decision not found")
+    reasoning = (
+        db.query(DecisionReasoning)
+        .filter(DecisionReasoning.decision_id == decision_id)
+        .order_by(DecisionReasoning.sequence_number)
+        .all()
+    )
+    evidence = (
