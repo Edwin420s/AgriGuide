@@ -1,0 +1,32 @@
+{
+  "sensor_nodes": [
+    {
+      "node_id": "loam-sensor-01",
+      "field_id": "north-plot-maize",
+      "type": "capacitive_soil_moisture",
+      "readings_24h": [
+        {"timestamp": "2026-09-30T06:00:00Z", "moisture_pct": 19.2, "battery_v": 3.9},
+        {"timestamp": "2026-09-30T09:00:00Z", "moisture_pct": 18.5, "battery_v": 3.9},
+        {"timestamp": "2026-09-30T12:00:00Z", "moisture_pct": 17.6, "battery_v": 3.8},
+        {"timestamp": "2026-09-30T15:00:00Z", "moisture_pct": 16.8, "battery_v": 3.8},
+        {"timestamp": "2026-09-30T18:00:00Z", "moisture_pct": 16.5, "battery_v": 3.7}
+      ],
+      "health_status": "HEALTHY",
+      "calibration_offset": 0.0
+    },
+    {
+      "node_id": "terrace-sensor-02",
+      "field_id": "south-terrace-beans",
+      "type": "capacitive_soil_moisture",
+      "readings_24h": [
+        {"timestamp": "2026-09-30T06:00:00Z", "moisture_pct": 24.1, "battery_v": 4.1},
+        {"timestamp": "2026-09-30T09:00:00Z", "moisture_pct": 23.4, "battery_v": 4.1},
+        {"timestamp": "2026-09-30T12:00:00Z", "moisture_pct": 22.8, "battery_v": 4.0},
+        {"timestamp": "2026-09-30T15:00:00Z", "moisture_pct": 22.1, "battery_v": 4.0},
+        {"timestamp": "2026-09-30T18:00:00Z", "moisture_pct": 21.7, "battery_v": 3.9}
+      ],
+      "health_status": "HEALTHY",
+      "calibration_offset": 0.0
+    }
+  ]
+}
