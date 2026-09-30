@@ -15,3 +15,12 @@
 (= (agriguide-rule WAIT) R-HIGH-RAIN-WATER-CONSERVATION)
 (= (agriguide-rule REASSESS) R-UNCERTAIN-OR-BALANCED)
 
+(= (agriguide-counterfactual IRRIGATE $rain)
+   (if (>= $rain 70)
+       (water-efficiency POOR)
+       (water-efficiency OPTIMAL)))
+
+(= (agriguide-counterfactual WAIT $rain)
+   (if (< $rain 35)
+       (crop-stress-risk HIGH)
+       (crop-stress-risk LOW)))
