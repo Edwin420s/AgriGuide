@@ -33,3 +33,48 @@ def test_metta_counterfactual_reasoning():
     assert cf_low["if_wait"]["efficiency"] == "NEUTRAL"
 
 def test_custom_farmer_rule_adaptation():
+    # Test "The Agent That Grows Up": custom farmer rule overrides default
+    custom_rule = {
+        "name": "Dry River Buffer",
+        "action": "WAIT",
+        "condition": {"rain_threshold_min": 50},
+        "is_active": True
+    }
+    # Normally 55% rain with 16% soil might be borderline, but custom rule triggers WAIT
+    res = metta_service.execute_query(
+        soil=16,
+        rain=55,
+        water="limited",
+        current_rain=False,
+        custom_rules=[custom_rule]
+    )
+    assert res.recommendation == "WAIT"
+    assert "Dry River Buffer" in res.rules
+
+def test_conflict_detection():
+    reasoner = IrrigationReasoner()
+    state_with_conflict = {
+        "soil_moisture": 17,
+        "rain_probability_24h": 80,
+        "water_availability": "LIMITED",
+        "current_rainfall": False,
+        "crop_water_demand": "HIGH",
+        "weather_confidence": 0.8,
+        "soil_confidence": 0.9,
+        "conflicts": [
+            {
+                "predicate": "rain_probability_24h",
+                "sources": ["PROVIDER_A", "PROVIDER_B"],
+                "values": [80, 20],
+                "description": "Severe weather forecast conflict"
+            }
+        ]
+    }
+    result = reasoner.decide(state_with_conflict)
+    # Check that conflict detection is logged in reasoning steps
+    conflict_steps = [s for s in result.steps if s.get("type") == "CONFLICT_DETECTION"]
+    assert len(conflict_steps) > 0
+    # Confidence should be penalized due to conflicting inputs
+    assert result.confidence <= 0.85
+
+def test_decision_supersession_and_diff():
