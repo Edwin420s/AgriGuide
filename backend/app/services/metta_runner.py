@@ -228,3 +228,33 @@ class MettaInterpreter:
         children = expr.children
         if not children:
             return expr
+
+        head = children[0]
+
+        # Builtin: if
+        if head == Symbol('if'):
+            if len(children) >= 4:
+                cond = self.evaluate(children[1])
+                self.trace_steps.append({
+                    "type": "CONDITION_EVAL",
+                    "expression": repr(children[1]),
+                    "result": bool(cond),
+                    "branch": "then" if cond else "else"
+                })
+                if cond:
+                    return self.evaluate(children[2])
+                else:
+                    return self.evaluate(children[3])
+
+        # Builtin: and
+        if head == Symbol('and'):
+            for c in children[1:]:
+                res = self.evaluate(c)
+                if not res:
+                    return False
+            return True
+
+        # Builtin: or
+        if head == Symbol('or'):
+            for c in children[1:]:
+                res = self.evaluate(c)
