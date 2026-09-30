@@ -78,3 +78,53 @@ def test_conflict_detection():
     assert result.confidence <= 0.85
 
 def test_decision_supersession_and_diff():
+    db = SessionLocal()
+    try:
+        # Get Field A
+        field = db.query(Field).filter(Field.name.like("%North Plot%")).first()
+        assert field is not None
+
+        cog = CognitiveService()
+        decisions = db.query(Decision).filter(Decision.field_id == field.id).order_by(Decision.created_at.desc()).all()
+        assert len(decisions) >= 2
+
+        latest_dec = decisions[0]
+        assert latest_dec.supersedes_id is not None
+
+        diff = cog.get_decision_diff(db, latest_dec.id)
+        assert diff["decision_id"] == latest_dec.id
+        assert diff["superseded_id"] == latest_dec.supersedes_id
+        assert diff["recommendation"] == "WAIT"
+        assert diff["previous_recommendation"] == "IRRIGATE"
+        assert len(diff["rule_changes"]) > 0
+    finally:
+        db.close()
+
+def test_outcome_recording_and_calibration():
+    db = SessionLocal()
+    try:
+        cog = CognitiveService()
+        dec = db.query(Decision).first()
+        assert dec is not None
+
+        # Test numeric outcome
+        out = cog.record_outcome(db, dec, {
+            "type": "ACTUAL_RAINFALL",
+            "observed_value": 8.5,
+            "unit": "mm"
+        })
+        assert out.id is not None
+        assert out.observed_value.get("value") == 8.5
+
+        # Test dict outcome
+        out_dict = cog.record_outcome(db, dec, {
+            "type": "ACTUAL_RAINFALL",
+            "observed_value": {"millimeters": 12.0, "rained": True},
+            "unit": "mm"
+        })
+        assert out_dict.id is not None
+        assert out_dict.observed_value.get("millimeters") == 12.0
+    finally:
+        db.close()
+
+def test_omega_stateful_agent_cycle():
