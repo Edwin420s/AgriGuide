@@ -93,3 +93,87 @@ class OmegaAgent:
                 "type": "OMEGA_AGENT_INIT",
                 "rule_id": "OMEGA-CORE-CYCLE",
                 "input": {"agent_id": self.agent_id, "goal": goal, "skill": self.skill_contract},
+                "output": f"Omega agent activated goal: '{goal}'",
+                "confidence": 0.99
+            }
+        ]
+
+        if reconciliation_step:
+            omega_steps.append(reconciliation_step)
+
+        # Shift existing reasoning steps sequence numbers
+        start_idx = len(omega_steps) + 1
+        for i, s in enumerate(reasoning_res.steps, start_idx):
+            s["sequence"] = i
+            omega_steps.append(s)
+
+        reasoning_res.steps = omega_steps
+        reasoning_res.source = "omega-native-metta"
+
+        # Step D: Update Omega Persistent Memory Buffer
+        is_supersession = bool(reconciliation_step and reconciliation_step.get("supersedes_prior"))
+        new_episode = {
+            "agent_id": self.agent_id,
+            "goal": goal,
+            "recommendation": reasoning_res.recommendation,
+            "confidence": reasoning_res.confidence,
+            "reason": reasoning_res.reason,
+            "rules": reasoning_res.rules,
+            "supersedes_prior": is_supersession,
+            "timestamp": datetime.utcnow().isoformat(),
+            "state_snapshot": {
+                "soil_moisture": state.get("soil_moisture"),
+                "rain_probability_24h": state.get("rain_probability_24h"),
+                "current_rainfall": state.get("current_rainfall", False),
+                "water_availability": state.get("water_availability", "LIMITED")
+            }
+        }
+        updated_memory = memory + [new_episode]
+
+        return OmegaResult(
+            reasoning=reasoning_res,
+            memory=updated_memory[-20:],
+            mode="omega-native-metta",
+            agent_id=self.agent_id,
+            skill_contract=self.skill_contract
+        )
+
+    def _reconcile_memory(self, current_state: dict[str, Any], memory: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Inspects past decisions in Omega memory to identify state revisions and supersessions."""
+        if not memory:
+            return None
+
+        # Retrieve most recent decision episode from Omega memory
+        prior = memory[-1]
+        prior_rec = prior.get("decision") or prior.get("recommendation")
+        if not prior_rec:
+            return None
+
+        rain = current_state.get("rain_probability_24h", 0)
+        c_rain = current_state.get("current_rainfall", False)
+
+        # Check if rain telemetry invalidates an earlier IRRIGATE decision
+        if prior_rec == "IRRIGATE" and (rain >= 70 or c_rain):
+            return {
+                "sequence": 2,
+                "type": "OMEGA_MEMORY_RECONCILIATION",
+                "rule_id": "OMEGA-REVISE-PRIOR-DECISION",
+                "input": {
+                    "prior_recommendation": prior_rec,
+                    "new_telemetry": {"rain_probability_24h": rain, "current_rainfall": c_rain}
+                },
+                "output": "Memory conflict detected: New rainfall telemetry invalidates prior dry assumption; triggering state supersession.",
+                "confidence": 0.95,
+                "supersedes_prior": True
+            }
+
+        return {
+            "sequence": 2,
+            "type": "OMEGA_MEMORY_RECALL",
+            "rule_id": "OMEGA-RECALL-PRIOR",
+            "input": {"prior_recommendation": prior_rec},
+            "output": f"Recalled prior decision from Omega memory: {prior_rec}",
+            "confidence": 0.92,
+            "supersedes_prior": False
+        }
+
