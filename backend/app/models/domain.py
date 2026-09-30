@@ -38,3 +38,38 @@ class Field(Base):
     irrigation_method: Mapped[str] = mapped_column(String(100), default="drip")
     crop: Mapped[str] = mapped_column(String(100), default="maize")
     growth_stage: Mapped[str] = mapped_column(String(100), default="flowering")
+    planting_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="ACTIVE")
+    farm: Mapped[Farm] = relationship(back_populates="fields")
+    rules: Mapped[list["FieldRule"]] = relationship(back_populates="field", cascade="all, delete-orphan")
+
+class Sensor(Base):
+    __tablename__ = "sensors"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    type: Mapped[str] = mapped_column(String(60))
+    unit: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(30), default="ONLINE")
+
+class Evidence(Base):
+    __tablename__ = "evidence"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    type: Mapped[str] = mapped_column(String(60))
+    source_type: Mapped[str] = mapped_column(String(60))
+    source_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subject: Mapped[str] = mapped_column(String(120))
+    predicate: Mapped[str] = mapped_column(String(120))
+    value: Mapped[dict] = mapped_column(JSON)
+    unit: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    freshness_score: Mapped[float] = mapped_column(Float, default=1.0)
+    quality_score: Mapped[float] = mapped_column(Float, default=1.0)
+    source_reliability: Mapped[float] = mapped_column(Float, default=0.7)
+    confidence: Mapped[float] = mapped_column(Float, default=0.7)
+    status: Mapped[str] = mapped_column(String(30), default="ACTIVE")
+    provenance: Mapped[dict] = mapped_column(JSON, default=dict)
+    raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
