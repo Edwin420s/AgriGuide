@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR / "backend"))
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db.session import Base, engine, SessionLocal
 from app.models.domain import (
     User, Farm, Field, Sensor, Evidence, Belief, CognitiveRun,
@@ -28,7 +28,7 @@ def seed():
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     print("Seeding AgriGuide demo data...")
 
