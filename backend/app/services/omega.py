@@ -23,3 +23,33 @@ class OmegaEpisode:
     rules: list[str]
     timestamp: str
     state_snapshot: dict[str, Any] = field(default_factory=dict)
+    supersedes_prior: bool = False
+
+@dataclass
+class OmegaResult:
+    reasoning: ReasoningResult
+    memory: list[dict[str, Any]]
+    mode: str
+    agent_id: str = "omega-agriguide-agent-01"
+    skill_contract: str = "omega/skills/agriguide.metta"
+
+class OmegaAgent:
+    """Stateful Omega Cognitive Decision Agent.
+
+    Encapsulates:
+    1. Identity & Skill Contract: Invokes `omega/skills/agriguide.metta`.
+    2. Persistent Memory: Retains episodic traces across runs.
+    3. Memory Reconciliation: Detects when new sensory telemetry invalidates
+       prior decision assumptions, generating explicit cognitive diff steps.
+    """
+    def __init__(self):
+        self.agent_id = "omega-agriguide-agent-01"
+        self.skill_contract = "omega/skills/agriguide.metta"
+        self.reasoner = IrrigationReasoner()
+        self.episodes: list[OmegaEpisode] = []
+
+    def run(self, goal: str, state: dict[str, Any], memory: list[dict[str, Any]]) -> OmegaResult:
+        # 1. External Gateway Option (if active in production cluster)
+        if settings.omega_mode == "external" and settings.omega_url:
+            try:
+                r = httpx.post(
