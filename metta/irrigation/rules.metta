@@ -66,3 +66,7 @@
             (risk severe-crop-water-stress)
             (impact "Prolonged moisture deficit without incoming rain may permanently reduce yield"))
         (Counterfactual 
+            (action WAIT) 
+            (efficiency HIGH) 
+            (risk minimal-natural-rain-compensates)
+            (impact "Preserves reservoir reserves while expected rainfall replenishes soil"))))
