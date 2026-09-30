@@ -64,3 +64,19 @@
 
 ; --- 8. Decision Classifiers ---
 (decision IRRIGATE)
+(decision WAIT)
+(decision REASSESS)
+(decision MONITOR)
+
+; --- 9. Atomspace Query Patterns (Lessons 05, 10, 15) ---
+; Retrieve water demand for any crop and stage combination:
+(= (get-crop-demand $crop $stage)
+   (match &self (water-demand $crop $stage $demand) $demand))
+
+; Retrieve critical moisture threshold for any soil type:
+(= (get-soil-threshold $soil)
+   (match &self (soil-property $soil $retention $thresh) $thresh))
+
+; Retrieve whether two items have a cognitive relation:
+(= (has-relation $rel $subject $object)
+   (match &self (relation $rel) (relation $rel)))
