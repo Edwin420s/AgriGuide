@@ -68,3 +68,45 @@ class Expression(Atom):
         return isinstance(other, Expression) and self.children == other.children
 
 def tokenize(text: str) -> list[str]:
+    # Remove single line comments starting with ;
+    cleaned_lines = []
+    for line in text.splitlines():
+        line = re.sub(r';.*$', '', line)
+        cleaned_lines.append(line)
+    cleaned = " ".join(cleaned_lines)
+    # Tokenize parentheses and whitespace-delimited tokens
+    tokens = []
+    current = []
+    in_quote = False
+    quote_char = ""
+    for ch in cleaned:
+        if ch in ('"', "'"):
+            if in_quote and ch == quote_char:
+                in_quote = False
+                current.append(ch)
+                tokens.append("".join(current))
+                current = []
+            elif not in_quote:
+                in_quote = True
+                quote_char = ch
+                current.append(ch)
+            else:
+                current.append(ch)
+        elif in_quote:
+            current.append(ch)
+        elif ch in ('(', ')'):
+            if current:
+                tokens.append("".join(current))
+                current = []
+            tokens.append(ch)
+        elif ch.isspace():
+            if current:
+                tokens.append("".join(current))
+                current = []
+        else:
+            current.append(ch)
+    if current:
+        tokens.append("".join(current))
+    return tokens
+
+def parse_tokens(tokens: list[str]) -> list[Any]:
