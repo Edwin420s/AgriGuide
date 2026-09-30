@@ -178,3 +178,43 @@ def get_field_rules(field_id: str, db: Session = Depends(get_db)):
         for r in rules
     ]
 
+@router.post("/fields/{field_id}/rules")
+def create_field_rule(field_id: str, payload: FieldRuleCreate, db: Session = Depends(get_db)):
+    if not db.query(Field).filter(Field.id == field_id).first():
+        raise HTTPException(404, "Field not found")
+    rule = FieldRule(
+        field_id=field_id,
+        name=payload.name,
+        description=payload.description,
+        condition=payload.condition,
+        action=payload.action,
+        metta_expr=payload.metta_expr,
+        priority=payload.priority,
+        is_active=payload.is_active
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    cognitive.audit(db, "rule", rule.id, "CUSTOM_RULE_CREATED", {"name": rule.name, "action": rule.action})
+    db.commit()
+    return {"id": rule.id, "name": rule.name, "status": "active"}
+
+@router.put("/fields/{field_id}/rules/{rule_id}/toggle")
+def toggle_field_rule(field_id: str, rule_id: str, db: Session = Depends(get_db)):
+    rule = db.query(FieldRule).filter(FieldRule.id == rule_id, FieldRule.field_id == field_id).first()
+    if not rule:
+        raise HTTPException(404, "Rule not found")
+    rule.is_active = not rule.is_active
+    db.commit()
+    return {"id": rule.id, "is_active": rule.is_active}
+
+@router.delete("/fields/{field_id}/rules/{rule_id}")
+def delete_field_rule(field_id: str, rule_id: str, db: Session = Depends(get_db)):
+    rule = db.query(FieldRule).filter(FieldRule.id == rule_id, FieldRule.field_id == field_id).first()
+    if not rule:
+        raise HTTPException(404, "Rule not found")
+    db.delete(rule)
+    db.commit()
+    return {"deleted": True, "rule_id": rule_id}
+
+# --- Decision, Audit & Diff ---
