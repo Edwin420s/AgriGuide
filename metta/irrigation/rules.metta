@@ -30,3 +30,16 @@
 (= (soil-aware-decision $soil $soil-type $rain $water $current-rain)
     (if $current-rain
         WAIT
+        (if (and (< $soil (soil-threshold $soil-type)) (>= $rain 70) (== $water limited))
+            WAIT
+            (if (and (< $soil (soil-threshold $soil-type)) (< $rain 35) (not (== $water unavailable)))
+                IRRIGATE
+                REASSESS))))
+
+; --- 5. Symbolic Rule Identifiers ---
+(= (decision-rule IRRIGATE) R-LOW-MOISTURE-LOW-RAIN)
+(= (decision-rule WAIT) R-HIGH-RAIN-WATER-CONSERVATION)
+(= (decision-rule REASSESS) R-UNCERTAIN-OR-BALANCED)
+(= (decision-rule MONITOR) R-CONFLICT-OR-HIGH-UNCERTAINTY)
+
+; --- 6. Counterfactual Reasoning Rules (Trade-off Analysis) ---
