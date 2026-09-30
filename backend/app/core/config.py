@@ -1,0 +1,28 @@
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_DB_PATH = PROJECT_ROOT / "agriguide.db"
+DEFAULT_METTA_RULES = PROJECT_ROOT / "metta" / "irrigation" / "rules.metta"
+DEFAULT_METTA_KNOWLEDGE = PROJECT_ROOT / "metta" / "knowledge" / "agriculture.metta"
+DEFAULT_OMEGA_SKILL = PROJECT_ROOT / "omega" / "skills" / "agriguide.metta"
+
+class Settings(BaseSettings):
+    app_name: str = "AgriGuide"
+    environment: str = "development"
+    database_url: str = f"sqlite:///{DEFAULT_DB_PATH}"
+    api_prefix: str = "/api"
+    cors_origins: str = "http://localhost:5173"
+    weather_provider: str = "mock"
+    llm_provider: str = "mock"
+    omega_mode: str = "local"
+    omega_url: str = ""
+    metta_binary: str = "metta"
+    metta_rules_path: str = str(DEFAULT_METTA_RULES)
+    metta_knowledge_path: str = str(DEFAULT_METTA_KNOWLEDGE)
+    omega_skill_path: str = str(DEFAULT_OMEGA_SKILL)
+    secret_key: str = "change-me-in-production"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+settings = Settings()
+
