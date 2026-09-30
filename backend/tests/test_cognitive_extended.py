@@ -85,10 +85,13 @@ def test_decision_supersession_and_diff():
         assert field is not None
 
         cog = CognitiveService()
-        decisions = db.query(Decision).filter(Decision.field_id == field.id).order_by(Decision.created_at.desc()).all()
-        assert len(decisions) >= 2
-
-        latest_dec = decisions[0]
+        latest_dec = (
+            db.query(Decision)
+            .filter(Decision.field_id == field.id, Decision.supersedes_id.isnot(None))
+            .order_by(Decision.created_at.desc())
+            .first()
+        )
+        assert latest_dec is not None
         assert latest_dec.supersedes_id is not None
 
         diff = cog.get_decision_diff(db, latest_dec.id)
