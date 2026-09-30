@@ -58,3 +58,24 @@ class FieldRuleResponse(BaseModel):
     priority: int
     is_active: bool
     created_at: datetime
+
+class WhatIfSimulateRequest(BaseModel):
+    soil_moisture: float | None = None
+    rain_probability_24h: float | None = None
+    water_availability: str | None = None
+    current_rainfall: bool = False
+    crop_water_demand: str | None = None
+    custom_rule_action: str | None = None
+    custom_rule_rain_min: float | None = None
+
+class DecisionDiffResponse(BaseModel):
+    decision_id: str
+    superseded_id: str | None
+    recommendation: str
+    previous_recommendation: str | None
+    reason: str
+    previous_reason: str | None
+    confidence_delta: float
+    evidence_changes: list[dict]
+    rule_changes: list[dict]
+
