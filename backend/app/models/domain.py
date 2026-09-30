@@ -143,3 +143,28 @@ class LearningEvent(Base):
     observation: Mapped[dict] = mapped_column(JSON)
     pattern: Mapped[str] = mapped_column(Text)
     old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="OBSERVED")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class SourceReliability(Base):
+    __tablename__ = "source_reliability"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str | None] = mapped_column(ForeignKey("fields.id"), nullable=True)
+    source_id: Mapped[str] = mapped_column(String(120))
+    source_type: Mapped[str] = mapped_column(String(60))
+    score: Mapped[float] = mapped_column(Float, default=0.7)
+    samples: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    entity_type: Mapped[str] = mapped_column(String(60))
+    entity_id: Mapped[str] = mapped_column(String(36))
+    event_type: Mapped[str] = mapped_column(String(80))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class FieldRule(Base):
+    __tablename__ = "field_rules"
