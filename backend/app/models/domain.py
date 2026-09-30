@@ -73,3 +73,33 @@ class Evidence(Base):
     provenance: Mapped[dict] = mapped_column(JSON, default=dict)
     raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class Belief(Base):
+    __tablename__ = "beliefs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    subject: Mapped[str] = mapped_column(String(120))
+    predicate: Mapped[str] = mapped_column(String(120))
+    value: Mapped[dict] = mapped_column(JSON)
+    confidence: Mapped[float] = mapped_column(Float)
+    uncertainty: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(30), default="ACTIVE")
+    revision_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class CognitiveRun(Base):
+    __tablename__ = "cognitive_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    trigger: Mapped[str] = mapped_column(String(60))
+    goal: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(30), default="CREATED")
+    world_state_version: Mapped[int] = mapped_column(Integer, default=1)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+class Decision(Base):
+    __tablename__ = "decisions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
