@@ -108,3 +108,48 @@ class IrrigationReasoner:
                 steps=steps,
                 source=source,
                 counterfactuals=metta_res.counterfactuals
+            )
+        except Exception as e:
+            # Fallback to deterministic rules if unexpected exception
+            return self._fallback_decide(state, steps, str(e))
+
+    def _fallback_decide(self, state: dict[str, Any], steps: list[dict[str, Any]], error_msg: str) -> ReasoningResult:
+        soil = state.get("soil_moisture")
+        rain = state.get("rain_probability_24h")
+        water = state.get("water_availability", "LIMITED")
+        current_rain = state.get("current_rainfall", False)
+        weather_conf = state.get("weather_confidence", 0.7)
+        soil_conf = state.get("soil_confidence", 0.7)
+
+        if soil is None or rain is None:
+            return ReasoningResult(
+                "REASSESS", 0.45, "Required field evidence is missing.",
+                ["R-REASSESS-MISSING"],
+                steps + [{"sequence": len(steps)+1, "type": "CONFLICT", "output": "missing required evidence"}],
+                "fallback"
+            )
+
+        if current_rain:
+            rec = "WAIT"; rules = ["R-CURRENT-RAIN"]
+            reason = "Rain is currently observed, so immediate irrigation is not recommended."
+        elif rain >= 70 and water == "LIMITED":
+            rec = "WAIT"; rules = ["R-HIGH-RAIN-WATER-CONSERVATION"]
+            reason = "Expected rainfall is high and water is limited; delaying irrigation."
+        elif soil <= 18 and rain < 35 and water != "UNAVAILABLE":
+            rec = "IRRIGATE"; rules = ["R-LOW-MOISTURE-LOW-RAIN"]
+            reason = "Soil moisture is critically low and rain is unlikely."
+        else:
+            rec = "REASSESS"; rules = ["R-UNCERTAIN-OR-BALANCED"]
+            reason = "Evidence is balanced; monitor conditions and reassess."
+
+        confidence = round(max(0.5, min(0.95, 0.45 * weather_conf + 0.45 * soil_conf + 0.10)), 2)
+        steps.append({
+            "sequence": len(steps) + 1,
+            "type": "DECISION",
+            "rule_id": rules[0],
+            "input": {"fallback_reason": error_msg},
+            "output": rec,
+            "confidence": confidence
+        })
+        cf = metta_service.evaluate_counterfactuals(soil or 20.0, rain or 20.0, water)
+        return ReasoningResult(rec, confidence, reason, rules, steps, "fallback", counterfactuals=cf)
