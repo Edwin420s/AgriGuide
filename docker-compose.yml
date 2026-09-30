@@ -1,25 +1,26 @@
+version: "3.8"
+
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: agriguide
-      POSTGRES_USER: agriguide
-      POSTGRES_PASSWORD: agriguide
-    ports: ["5432:5432"]
-    volumes: ["agriguide_pg:/var/lib/postgresql/data"]
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://agriguide:agriguide@db:5432/agriguide
-      CORS_ORIGINS: http://localhost:5173
-      OMEGA_MODE: local
-    ports: ["8000:8000"]
-    depends_on: [db]
+      - DATABASE_URL=sqlite:///./agriguide.db
+      - ENVIRONMENT=production
+    volumes:
+      - backend_data:/app/data
+
   frontend:
-    build: ./frontend
-    environment:
-      VITE_API_URL: http://localhost:8000/api
-    ports: ["5173:5173"]
-    depends_on: [backend]
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
 volumes:
-  agriguide_pg:
+  backend_data:
