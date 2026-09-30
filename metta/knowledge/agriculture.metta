@@ -32,3 +32,19 @@
 (water-demand maize fruiting high)
 (water-demand maize maturity low)
 
+(water-demand french_beans germination medium)
+(water-demand french_beans vegetative high)
+(water-demand french_beans flowering high)
+(water-demand french_beans fruiting medium)
+(water-demand french_beans maturity low)
+
+(water-demand tomato germination medium)
+(water-demand tomato vegetative high)
+(water-demand tomato flowering high)
+(water-demand tomato fruiting high)
+(water-demand tomato maturity low)
+
+; --- 5. Soil Types & Water Retention Capacity ---
+; Format: (soil-property $soil_type $retention_tier $critical_threshold_percent)
+(soil-property loam medium-retention 18)
+(soil-property sandy_loam low-retention 22)
