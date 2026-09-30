@@ -103,3 +103,23 @@ class Decision(Base):
     __tablename__ = "decisions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    cognitive_run_id: Mapped[str] = mapped_column(ForeignKey("cognitive_runs.id"))
+    recommendation: Mapped[str] = mapped_column(String(30))
+    confidence: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(Text)
+    supersedes_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="ISSUED")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class DecisionReasoning(Base):
+    __tablename__ = "decision_reasoning"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    decision_id: Mapped[str] = mapped_column(ForeignKey("decisions.id"))
+    sequence_number: Mapped[int] = mapped_column(Integer)
+    step_type: Mapped[str] = mapped_column(String(40))
+    input_data: Mapped[dict] = mapped_column(JSON)
+    rule_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    output_data: Mapped[dict] = mapped_column(JSON)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+
+class Outcome(Base):
