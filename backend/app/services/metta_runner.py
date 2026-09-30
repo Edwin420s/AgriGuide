@@ -258,3 +258,33 @@ class MettaInterpreter:
         if head == Symbol('or'):
             for c in children[1:]:
                 res = self.evaluate(c)
+                if res:
+                    return True
+            return False
+
+        # Builtin: not
+        if head == Symbol('not'):
+            if len(children) > 1:
+                return not bool(self.evaluate(children[1]))
+            return False
+
+        # Builtin: comparisons <, <=, >, >=, ==
+        if head in (Symbol('<'), Symbol('<='), Symbol('>'), Symbol('>='), Symbol('==')):
+            if len(children) >= 3:
+                left = self.evaluate(children[1])
+                right = self.evaluate(children[2])
+                op = head.name
+                val = self._compare(op, left, right)
+                return val
+
+        # Check rewrite rules in space
+        for rule_head, rule_body in self.space.rules:
+            bindings: dict[str, Any] = {}
+            if self.pattern_match(rule_head, expr, bindings):
+                self.trace_steps.append({
+                    "type": "RULE_MATCH",
+                    "rule_head": repr(rule_head),
+                    "bindings": {k: repr(v) for k, v in bindings.items()},
+                    "output": repr(rule_body)
+                })
+                substituted = self.substitute(rule_body, bindings)
