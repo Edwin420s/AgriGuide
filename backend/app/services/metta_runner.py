@@ -288,3 +288,43 @@ class MettaInterpreter:
                     "output": repr(rule_body)
                 })
                 substituted = self.substitute(rule_body, bindings)
+                return self.evaluate(substituted)
+
+        # Evaluate child expressions if not resolved
+        return Expression([self.evaluate(c) for c in children])
+
+    def _compare(self, op: str, left: Any, right: Any) -> bool:
+        if isinstance(left, Symbol):
+            left = left.name.lower()
+        if isinstance(right, Symbol):
+            right = right.name.lower()
+        if isinstance(left, str):
+            left = left.lower()
+        if isinstance(right, str):
+            right = right.lower()
+
+        try:
+            if op == '<':
+                return float(left) < float(right)
+            elif op == '<=':
+                return float(left) <= float(right)
+            elif op == '>':
+                return float(left) > float(right)
+            elif op == '>=':
+                return float(left) >= float(right)
+            elif op == '==':
+                return left == right
+        except (ValueError, TypeError):
+            return left == right
+        return False
+
+class MettaService:
+    """High-level service coordinating MeTTa execution."""
+    def __init__(self):
+        self.rules_path = Path(settings.metta_rules_path)
+        self.knowledge_path = Path(settings.metta_knowledge_path)
+        self.omega_skill_path = Path(settings.omega_skill_path)
+        self.native_binary = settings.metta_binary if shutil.which(settings.metta_binary) else None
+
+    def execute_query(
+        self,
