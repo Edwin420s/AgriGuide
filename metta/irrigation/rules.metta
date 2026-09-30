@@ -43,3 +43,14 @@
 (= (decision-rule MONITOR) R-CONFLICT-OR-HIGH-UNCERTAINTY)
 
 ; --- 6. Counterfactual Reasoning Rules (Trade-off Analysis) ---
+; "What if you Irrigated?"
+(= (counterfactual-analysis IRRIGATE $soil $rain $water)
+    (if (>= $rain 70)
+        (Counterfactual 
+            (action IRRIGATE) 
+            (efficiency POOR) 
+            (risk root-leaching-and-resource-depletion)
+            (impact "Consumes limited reservoir water unnecessarily before heavy rain"))
+        (Counterfactual 
+            (action IRRIGATE) 
+            (efficiency OPTIMAL) 
