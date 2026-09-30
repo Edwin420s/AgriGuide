@@ -1,0 +1,33 @@
+name: Security Audit & Secret Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan repository for leaked credentials
+        run: |
+          echo "Scanning for accidental hardcoded API tokens..."
+          ! grep -rE "(sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36}|AIza[0-9A-Za-z-_]{35})" --exclude-dir={.git,node_modules,dist,__pycache__} .
+          echo "No secret patterns matched."
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest httpx
+
+      - name: Run injection and leakage test suite
+        run: |
+          pytest backend/tests/test_security_audit.py -v
