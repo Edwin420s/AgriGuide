@@ -1,0 +1,43 @@
+{
+  "region": "East Africa / Kenya (Kirinyaga, Embu, Meru, Nakuru)",
+  "crops": [
+    {
+      "name": "Maize (Zea mays)",
+      "cultivars": ["H614D", "DK8031", "SC Duma 43"],
+      "stages": [
+        {"stage": "germination", "duration_days": 10, "kc": 0.40, "water_stress_sensitivity": "low"},
+        {"stage": "vegetative", "duration_days": 35, "kc": 0.80, "water_stress_sensitivity": "medium"},
+        {"stage": "flowering", "duration_days": 25, "kc": 1.20, "water_stress_sensitivity": "critical"},
+        {"stage": "grain_fill", "duration_days": 35, "kc": 1.15, "water_stress_sensitivity": "high"},
+        {"stage": "maturity", "duration_days": 20, "kc": 0.60, "water_stress_sensitivity": "low"}
+      ],
+      "base_temp_c": 10.0,
+      "optimal_temp_c": [18.0, 30.0],
+      "harvest_grain_moisture_target_pct": 13.5
+    },
+    {
+      "name": "French Beans (Phaseolus vulgaris)",
+      "cultivars": ["Teresa", "Samantha", "Serengeti"],
+      "stages": [
+        {"stage": "germination", "duration_days": 7, "kc": 0.40, "water_stress_sensitivity": "medium"},
+        {"stage": "vegetative", "duration_days": 20, "kc": 0.70, "water_stress_sensitivity": "medium"},
+        {"stage": "flowering", "duration_days": 15, "kc": 1.10, "water_stress_sensitivity": "critical"},
+        {"stage": "pod_filling", "duration_days": 18, "kc": 0.90, "water_stress_sensitivity": "high"}
+      ],
+      "base_temp_c": 8.0,
+      "optimal_temp_c": [16.0, 26.0],
+      "market_spec": "export grade, straight pods"
+    },
+    {
+      "name": "Sorghum (Sorghum bicolor)",
+      "cultivars": ["Gadam", "Seredo"],
+      "stages": [
+        {"stage": "vegetative", "duration_days": 40, "kc": 0.65},
+        {"stage": "booting_flowering", "duration_days": 25, "kc": 1.05},
+        {"stage": "grain_ripening", "duration_days": 30, "kc": 0.55}
+      ],
+      "base_temp_c": 10.0,
+      "drought_tolerance": "exceptional"
+    }
+  ]
+}
