@@ -54,3 +54,15 @@
         (Counterfactual 
             (action IRRIGATE) 
             (efficiency OPTIMAL) 
+            (risk low-moisture-stress-relief)
+            (impact "Replenishes soil moisture directly to sustain vegetative growth"))))
+
+; "What if you Waited?"
+(= (counterfactual-analysis WAIT $soil $rain $water)
+    (if (< $rain 35)
+        (Counterfactual 
+            (action WAIT) 
+            (efficiency NEUTRAL) 
+            (risk severe-crop-water-stress)
+            (impact "Prolonged moisture deficit without incoming rain may permanently reduce yield"))
+        (Counterfactual 
