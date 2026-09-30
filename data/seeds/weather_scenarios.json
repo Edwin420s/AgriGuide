@@ -1,0 +1,40 @@
+{
+  "scenarios": [
+    {
+      "id": "W-DROUGHT-SPELL",
+      "name": "Mid-Season Severe Drought Spell",
+      "temp_c": 31.5,
+      "humidity_pct": 32.0,
+      "wind_kmh": 16.0,
+      "rain_probability_24h": 5.0,
+      "rain_probability_48h": 8.0,
+      "consecutive_dry_days": 14,
+      "soil_moisture_trend": "rapidly_dropping",
+      "expected_decision": "IRRIGATE"
+    },
+    {
+      "id": "W-IMMINENT-EQUATORIAL-DOWNPOUR",
+      "name": "Approaching Heavy Convective Storm",
+      "temp_c": 24.0,
+      "humidity_pct": 88.0,
+      "wind_kmh": 22.0,
+      "rain_probability_24h": 85.0,
+      "rain_probability_48h": 90.0,
+      "forecast_rain_mm": 45.0,
+      "consecutive_dry_days": 0,
+      "expected_decision": "WAIT"
+    },
+    {
+      "id": "W-COOL-OVERCAST-NOMINAL",
+      "name": "Highland Overcast Low-Evaporation Window",
+      "temp_c": 21.0,
+      "humidity_pct": 72.0,
+      "wind_kmh": 8.0,
+      "rain_probability_24h": 35.0,
+      "rain_probability_48h": 30.0,
+      "forecast_rain_mm": 2.0,
+      "consecutive_dry_days": 3,
+      "expected_decision": "MONITOR"
+    }
+  ]
+}
