@@ -8,7 +8,8 @@ from app.models.domain import (
 )
 from app.schemas.api import (
     EvidenceCreate, FarmerObservation, DecisionRequest, OutcomeCreate,
-    FieldRuleCreate, WhatIfSimulateRequest
+    FieldRuleCreate, WhatIfSimulateRequest, FarmerConsultRequest,
+    FarmerConsultResponse, LLMStatusResponse
 )
 from app.services.cognitive import CognitiveService
 from app.services.llm import LLMService
@@ -20,7 +21,17 @@ llm = LLMService()
 
 @router.get("/health")
 def health():
-    return {"status": "ok", "service": "agriguide", "metta_engine": "active"}
+    return {
+        "status": "ok",
+        "service": "agriguide",
+        "metta_engine": "active",
+        "llm_provider": llm.check_status()
+    }
+
+@router.get("/llm/status", response_model=LLMStatusResponse)
+def get_llm_status():
+    return llm.check_status()
+
 
 @router.get("/dashboard")
 def dashboard(db: Session = Depends(get_db)):
@@ -139,9 +150,15 @@ def farmer_observation(field_id: str, payload: FarmerObservation, db: Session = 
     db.add(e)
     db.commit()
     db.refresh(e)
-    cognitive.audit(db, "evidence", e.id, "FARMER_OBSERVATION_PARSED", {"message": payload.message, "predicate": parsed.predicate})
+    cognitive.audit(db, "evidence", e.id, "FARMER_OBSERVATION_PARSED", {"message": payload.message, "predicate": parsed.predicate, "explanation": parsed.explanation})
     db.commit()
-    return {"evidence_id": e.id, "predicate": parsed.predicate, "value": parsed.value, "confidence": parsed.confidence}
+    return {
+        "evidence_id": e.id,
+        "predicate": parsed.predicate,
+        "value": parsed.value,
+        "confidence": parsed.confidence,
+        "explanation": parsed.explanation
+    }
 
 @router.get("/fields/{field_id}/beliefs")
 def beliefs(field_id: str, db: Session = Depends(get_db)):
@@ -226,11 +243,24 @@ def decide(field_id: str, payload: DecisionRequest, db: Session = Depends(get_db
         raise HTTPException(404, "Field not found")
     d, state, result = cognitive.decide(db, f, payload.trigger, payload.goal)
     diff = cognitive.get_decision_diff(db, d.id) if d.supersedes_id else None
+    explanation = llm.explain_decision(
+        recommendation=d.recommendation,
+        confidence=d.confidence,
+        reason=d.reason,
+        steps=result.reasoning.steps,
+        counterfactuals=result.reasoning.counterfactuals,
+        supersedes_diff=diff,
+        crop=f.crop,
+        soil_moisture=state.get("soil_moisture"),
+        rain_prob=state.get("rain_probability_24h"),
+        water_avail=state.get("water_availability")
+    )
     return {
         "decision_id": d.id,
         "recommendation": d.recommendation,
         "confidence": d.confidence,
         "reason": d.reason,
+        "explanation": explanation,
         "supersedes_id": d.supersedes_id,
         "state_version": db.query(Decision).filter(Decision.field_id == field_id).count(),
         "audit_available": True,
@@ -285,12 +315,26 @@ def audit(decision_id: str, db: Session = Depends(get_db)):
         f_state.get("water_availability") or "LIMITED"
     )
 
+    explanation = llm.explain_decision(
+        recommendation=d.recommendation,
+        confidence=d.confidence,
+        reason=d.reason,
+        steps=[{"rule_id": r.rule_id, "input": r.input_data, "output": r.output_data} for r in reasoning],
+        counterfactuals=cf,
+        supersedes_diff=diff,
+        crop=f.crop if f else "Maize",
+        soil_moisture=f_state.get("soil_moisture"),
+        rain_prob=f_state.get("rain_probability_24h"),
+        water_avail=f_state.get("water_availability")
+    )
+
     return {
         "decision": {
             "id": d.id,
             "recommendation": d.recommendation,
             "confidence": d.confidence,
             "reason": d.reason,
+            "explanation": explanation,
             "supersedes_id": d.supersedes_id,
             "created_at": d.created_at.isoformat()
         },
@@ -336,6 +380,24 @@ def decision_diff(decision_id: str, db: Session = Depends(get_db)):
     if not diff:
         raise HTTPException(404, "No supersession diff found for this decision.")
     return diff
+
+@router.post("/fields/{field_id}/consult", response_model=FarmerConsultResponse)
+def consult_field(field_id: str, payload: FarmerConsultRequest, db: Session = Depends(get_db)):
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    state = cognitive.world.build(db, f)
+    latest_d = db.query(Decision).filter(Decision.field_id == field_id).order_by(Decision.created_at.desc()).first()
+    context = {
+        "crop": f.crop,
+        "soil_moisture": state.get("soil_moisture", 18.0),
+        "rain_probability_24h": state.get("rain_probability_24h", 75.0),
+        "water_availability": state.get("water_availability", "LIMITED"),
+        "latest_decision": latest_d.recommendation if latest_d else "PENDING_EVALUATION",
+        "latest_reason": latest_d.reason if latest_d else "Awaiting initial MeTTa inference."
+    }
+    return llm.consult(payload.query, context)
+
 
 # --- Interactive What-If Simulation ---
 

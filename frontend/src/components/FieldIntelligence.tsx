@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -7,13 +7,16 @@ import {
   Droplets,
   GitBranch,
   Leaf,
+  MessageSquare,
   PlusCircle,
   RefreshCw,
   Scale,
   Send,
+  Sparkles,
   Zap
 } from 'lucide-react';
 import { TabType } from './Sidebar';
+import { consultField, getLLMStatus } from '../lib/api';
 
 interface FieldIntelligenceProps {
   field: any;
@@ -41,8 +44,46 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
   onSelectDecisionForAudit
 }) => {
   const [obsInput, setObsInput] = useState('');
+  const [llmStatus, setLlmStatus] = useState<any>(null);
+  const [consultQuery, setConsultQuery] = useState('');
+  const [consulting, setConsulting] = useState(false);
+  const [consultHistory, setConsultHistory] = useState<Array<{ role: 'farmer' | 'agent'; text: string; grounded?: boolean; model?: string }>>([
+    {
+      role: 'agent',
+      text: "Hello Edwin! I'm AgriGuide's Neural-Symbolic Assistant. Ask me anything about your field's soil moisture, rain forecast, or MeTTa reasoning.",
+      grounded: true
+    }
+  ]);
+
+  useEffect(() => {
+    getLLMStatus().then(setLlmStatus).catch(() => {});
+  }, []);
+
+  const handleConsult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consultQuery.trim() || consulting || !field?.id) return;
+    const q = consultQuery.trim();
+    setConsultQuery('');
+    setConsultHistory((prev) => [...prev, { role: 'farmer', text: q }]);
+    setConsulting(true);
+    try {
+      const res = await consultField(field.id, q);
+      setConsultHistory((prev) => [
+        ...prev,
+        { role: 'agent', text: res.answer, grounded: res.grounded, model: res.model }
+      ]);
+    } catch {
+      setConsultHistory((prev) => [
+        ...prev,
+        { role: 'agent', text: "Unable to reach AgriGuide reasoning service. Please check connection.", grounded: false }
+      ]);
+    } finally {
+      setConsulting(false);
+    }
+  };
 
   const currentDecision = decisions[0];
+
 
   const handleSendObs = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +128,20 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
         <div className="field-card">
           <div className="card-head">
             <div>
-              <span className="pill">ACTIVE FIELD CONTEXT</span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="pill">ACTIVE FIELD CONTEXT</span>
+                {llmStatus?.api_configured ? (
+                  <span className="pill pill-mode" title={`Powered by SingularityNET ASI Cloud (${llmStatus.model})`}>
+                    <Sparkles size={11} style={{ marginRight: '4px' }} />
+                    ASI CLOUD: {llmStatus.model}
+                  </span>
+                ) : (
+                  <span className="pill" title="Local Deterministic Mode">
+                    <Sparkles size={11} style={{ marginRight: '4px' }} />
+                    METTA GROUNDED
+                  </span>
+                )}
+              </div>
               <h2>{field?.name || 'Loading field...'}</h2>
               <p className="field-subtitle">
                 {field?.farm} · Crop: <strong>{field?.crop}</strong> ({field?.growth_stage})
@@ -166,6 +220,16 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
               </div>
 
               <p className="decision-reason">{currentDecision.reason}</p>
+
+              {currentDecision.explanation && (
+                <div className="explanation-callout">
+                  <div className="explanation-header">
+                    <Sparkles size={14} />
+                    <span>Neural-Symbolic Synthesis ({llmStatus?.api_configured ? llmStatus.model : 'MeTTa Derivation'})</span>
+                  </div>
+                  <p className="explanation-text">{currentDecision.explanation}</p>
+                </div>
+              )}
 
               {currentDecision.supersedes_id && (
                 <div className="superseded-callout">
@@ -333,6 +397,58 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Interactive Farmer Consult Assistant (ASI Cloud / MeTTa Grounded) */}
+      <section className="consult-panel">
+        <div className="consult-header">
+          <h3>
+            <Sparkles size={18} style={{ color: '#b26b00' }} />
+            <span>Consult AgriGuide (Neural-Symbolic Farmer Assistant)</span>
+          </h3>
+          <span className="pill pill-mode">
+            {llmStatus?.api_configured ? `ASI CLOUD · ${llmStatus.model}` : 'METTA GROUNDED'}
+          </span>
+        </div>
+        <p className="subtitle" style={{ margin: 0, fontSize: '13px' }}>
+          Ask natural-language questions about this field. Responses are grounded strictly in MeTTa's symbolic state and audited facts.
+        </p>
+
+        <div className="consult-history">
+          {consultHistory.map((item, idx) => (
+            <div key={idx} className={`consult-bubble ${item.role}`}>
+              <p style={{ margin: 0 }}>{item.text}</p>
+              {item.role === 'agent' && (
+                <small>
+                  {item.grounded ? '✓ Grounded in MeTTa state' : 'Unverified'}
+                  {item.model ? ` · ${item.model}` : ''}
+                </small>
+              )}
+            </div>
+          ))}
+          {consulting && (
+            <div className="consult-bubble agent">
+              <p style={{ margin: 0, fontStyle: 'italic', color: '#64746d' }}>
+                AgriGuide is querying MeTTa Atomspace and reasoning...
+              </p>
+            </div>
+          )}
+        </div>
+
+        <form className="consult-form" onSubmit={handleConsult}>
+          <input
+            type="text"
+            value={consultQuery}
+            onChange={(e) => setConsultQuery(e.target.value)}
+            placeholder="Ask a question (e.g. 'Should I turn on the drip lines today?', 'Why did you change to WAIT?')..."
+            disabled={consulting}
+          />
+          <button type="submit" className="primary" disabled={!consultQuery.trim() || consulting}>
+            <Send size={15} />
+            <span>Ask</span>
+          </button>
+        </form>
+      </section>
     </div>
   );
 };
+

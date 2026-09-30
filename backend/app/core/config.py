@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     metta_knowledge_path: str = str(DEFAULT_METTA_KNOWLEDGE)
     omega_skill_path: str = str(DEFAULT_OMEGA_SKILL)
     secret_key: str = "change-me-in-production"
+    # SingularityNET / ASI Cloud OpenAI-compatible API
+    asi_cloud_key: str = ""
+    asi_cloud_url: str = "https://llm.c.singularitynet.io/v1"
+    asi_cloud_model: str = "minimax/minimax-m3"
+    openai_api_key: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

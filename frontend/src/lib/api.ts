@@ -67,3 +67,12 @@ export const outcome = (id: string, data: any) =>
 export const learning = (id: string) => api<any[]>(`/fields/${id}/learning`);
 export const getSourceReliability = () => api<any[]>('/sources/reliability');
 export const getTimeline = (id: string) => api<any[]>(`/fields/${id}/timeline`);
+
+// SingularityNET / ASI Cloud Neural-Symbolic Language Layer
+export const getLLMStatus = () => api<any>('/llm/status');
+export const consultField = (fieldId: string, query: string) =>
+  api<any>(`/fields/${fieldId}/consult`, {
+    method: 'POST',
+    body: JSON.stringify({ query })
+  });
+

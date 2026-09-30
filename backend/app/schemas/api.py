@@ -79,3 +79,21 @@ class DecisionDiffResponse(BaseModel):
     evidence_changes: list[dict]
     rule_changes: list[dict]
 
+class FarmerConsultRequest(BaseModel):
+    query: str
+
+class FarmerConsultResponse(BaseModel):
+    answer: str
+    grounded: bool
+    provider: str
+    model: str
+
+class LLMStatusResponse(BaseModel):
+    provider: str
+    api_configured: bool
+    base_url: str
+    model: str
+    status: str
+    available_models: list[str]
+
+

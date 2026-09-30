@@ -78,6 +78,11 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ decisionId, deci
               </span>
               <div>
                 <h3>{auditData.decision.reason}</h3>
+                {auditData.decision.explanation && (
+                  <p style={{ margin: '6px 0 6px 0', fontSize: '13px', color: '#244e33', background: '#f0f8f3', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid #1e5a32' }}>
+                    <strong>Neural-Symbolic Synthesis:</strong> {auditData.decision.explanation}
+                  </p>
+                )}
                 <small>Decision ID: {auditData.decision.id} · Issued {new Date(auditData.decision.created_at).toLocaleString()}</small>
               </div>
             </div>
