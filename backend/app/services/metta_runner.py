@@ -328,3 +328,133 @@ class MettaService:
 
     def execute_query(
         self,
+        soil: float | None,
+        rain: float | None,
+        water: str = "limited",
+        current_rain: bool = False,
+        crop_demand: str = "high",
+        custom_rules: list[dict] | None = None
+    ) -> MettaExecutionResult:
+        # 1. Missing evidence guard
+        if soil is None or rain is None:
+            return MettaExecutionResult(
+                recommendation="REASSESS",
+                confidence=0.45,
+                reason="Required field evidence (soil moisture or rain forecast) is missing.",
+                rules=["R-REASSESS-MISSING"],
+                steps=[{"type": "MISSING_EVIDENCE", "output": "soil or rain is None"}],
+                source="metta-fallback"
+            )
+
+        # 2. Try native MeTTa binary if available on system
+        if self.native_binary and self.rules_path.is_file():
+            try:
+                res = self._run_native_metta(soil, rain, water, current_rain)
+                if res:
+                    return res
+            except Exception:
+                pass
+
+        # 3. Embedded Symbolic MeTTa Engine
+        return self._run_embedded_metta(soil, rain, water, current_rain, crop_demand, custom_rules)
+
+    def _run_native_metta(
+        self,
+        soil: float,
+        rain: float,
+        water: str,
+        current_rain: bool
+    ) -> MettaExecutionResult | None:
+        c_rain_str = "true" if current_rain else "false"
+        query_code = (
+            f"!(irrigation-decision {soil} {rain} {water.lower()} {c_rain_str})\n"
+        )
+        proc = subprocess.run(
+            [self.native_binary, str(self.rules_path)],
+            input=query_code,
+            text=True,
+            capture_output=True,
+            timeout=5
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            raw = proc.stdout.strip()
+            rec = "REASSESS"
+            if "IRRIGATE" in raw:
+                rec = "IRRIGATE"
+            elif "WAIT" in raw:
+                rec = "WAIT"
+
+            rule_id = self._map_rule_id(rec)
+            cf = self.evaluate_counterfactuals(soil, rain, water)
+            return MettaExecutionResult(
+                recommendation=rec,
+                confidence=0.88,
+                reason=self._format_reason(rec, soil, rain, water, current_rain),
+                rules=[rule_id],
+                steps=[
+                    {"type": "NATIVE_METTA", "input": query_code.strip(), "output": raw}
+                ],
+                source="metta-native",
+                counterfactuals=cf,
+                raw_output=raw
+            )
+        return None
+
+    def _run_embedded_metta(
+        self,
+        soil: float,
+        rain: float,
+        water: str,
+        current_rain: bool,
+        crop_demand: str,
+        custom_rules: list[dict] | None = None
+    ) -> MettaExecutionResult:
+        space = MettaSpace()
+
+        # Load knowledge base & baseline rules
+        if self.knowledge_path.is_file():
+            space.load_file(self.knowledge_path)
+        if self.rules_path.is_file():
+            space.load_file(self.rules_path)
+        if self.omega_skill_path.is_file():
+            space.load_file(self.omega_skill_path)
+        else:
+            # Built-in fallback rule definition
+            space.add_rule_string("""
+(= (water-demand flowering) high)
+(= (water-demand vegetative) medium)
+(= (water-demand germination) high)
+(= (irrigation-decision $soil $rain $water $current-rain)
+    (if $current-rain
+        WAIT
+        (if (and (< $soil 18) (>= $rain 70) (== $water limited))
+            WAIT
+            (if (and (< $soil 18) (< $rain 35) (not (== $water unavailable)))
+                IRRIGATE
+                REASSESS))))
+(= (decision-rule IRRIGATE) R-LOW-MOISTURE-LOW-RAIN)
+(= (decision-rule WAIT) R-HIGH-RAIN-WATER-CONSERVATION)
+(= (decision-rule REASSESS) R-UNCERTAIN-OR-BALANCED)
+""")
+
+        # Inject farmer / custom field rules ("The Agent That Grows Up")
+        if custom_rules:
+            for rule in custom_rules:
+                if not rule.get("is_active", True):
+                    continue
+                # If explicit MeTTa expr provided
+                if rule.get("metta_expr"):
+                    space.add_rule_string(rule["metta_expr"])
+                else:
+                    # Synthesize from condition
+                    cond = rule.get("condition", {})
+                    action = rule.get("action", "WAIT")
+                    # E.g. {"rain_threshold_min": 60}
+                    if "rain_threshold_min" in cond:
+                        thresh = cond["rain_threshold_min"]
+                        rule_str = f"(= (custom-rain-check $soil $rain) (if (>= $rain {thresh}) {action} CONTINUED))"
+                        space.add_rule_string(rule_str)
+
+        interpreter = MettaInterpreter(space)
+
+        # Construct query expression: (irrigation-decision $soil $rain $water $current-rain)
