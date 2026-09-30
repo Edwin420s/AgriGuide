@@ -1,0 +1,58 @@
+name: AgriGuide CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Seed demo database
+        run: |
+          python scripts/seed_demo.py
+
+      - name: Run MeTTa Curriculum Verification
+        run: |
+          python scripts/verify_metta_curriculum.py
+
+      - name: Run Full Pytest Suite
+        run: |
+          pytest backend/tests/ -v
+
+      - name: Run End-to-End Security Suite
+        run: |
+          python scripts/test_end_to_end_security.py
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend production bundle
+        working-directory: ./frontend
+        run: npm run build
