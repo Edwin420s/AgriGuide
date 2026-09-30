@@ -143,3 +143,68 @@ class CognitiveService:
 
         db.commit()
         db.refresh(decision)
+        return decision, state, result
+
+    def get_decision_diff(self, db: Session, decision_id: str) -> dict:
+        d = db.query(Decision).filter(Decision.id == decision_id).first()
+        if not d:
+            return {}
+
+        prev = None
+        if d.supersedes_id:
+            prev = db.query(Decision).filter(Decision.id == d.supersedes_id).first()
+
+        evidence_changes = []
+        rule_changes = []
+
+        if prev:
+            curr_steps = (
+                db.query(DecisionReasoning)
+                .filter(DecisionReasoning.decision_id == d.id)
+                .order_by(DecisionReasoning.sequence_number)
+                .all()
+            )
+            prev_steps = (
+                db.query(DecisionReasoning)
+                .filter(DecisionReasoning.decision_id == prev.id)
+                .order_by(DecisionReasoning.sequence_number)
+                .all()
+            )
+
+            prev_rules = [s.rule_id for s in prev_steps if s.rule_id]
+            curr_rules = [s.rule_id for s in curr_steps if s.rule_id]
+
+            rule_changes.append({
+                "previous_rules": prev_rules,
+                "new_rules": curr_rules,
+                "explanation": f"Rule shifted from {prev_rules} to {curr_rules} based on updated evidence."
+            })
+
+            # Fetch evidences created around or between decisions
+            recent_ev = (
+                db.query(Evidence)
+                .filter(Evidence.field_id == d.field_id)
+                .order_by(Evidence.observed_at.desc())
+                .limit(5)
+                .all()
+            )
+            for e in recent_ev:
+                evidence_changes.append({
+                    "predicate": e.predicate,
+                    "value": e.value,
+                    "source": e.source_type,
+                    "observed_at": e.observed_at.isoformat()
+                })
+
+        return {
+            "decision_id": d.id,
+            "superseded_id": d.supersedes_id,
+            "recommendation": d.recommendation,
+            "previous_recommendation": prev.recommendation if prev else None,
+            "reason": d.reason,
+            "previous_reason": prev.reason if prev else None,
+            "confidence_delta": round(d.confidence - (prev.confidence if prev else d.confidence), 2),
+            "evidence_changes": evidence_changes,
+            "rule_changes": rule_changes
+        }
+
