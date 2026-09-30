@@ -10,6 +10,8 @@ import { AuditTrailView } from './components/AuditTrailView';
 import { LearningCenter } from './components/LearningCenter';
 import { KnowledgeGraphView } from './components/KnowledgeGraphView';
 import { ScientificBenchmarkView } from './components/ScientificBenchmarkView';
+import { MultiDomainFarmView } from './components/MultiDomainFarmView';
+import { WeatherClimateSensorsView } from './components/WeatherClimateSensorsView';
 import {
   getFields,
   getField,
@@ -184,6 +186,20 @@ function App() {
             onSendObservation={handleSendObservation}
             onNavigateTab={setActiveTab}
             onSelectDecisionForAudit={(id) => setSelectedAuditId(id)}
+          />
+        )}
+
+        {activeTab === 'multi-domain' && (
+          <MultiDomainFarmView
+            field={field}
+            state={state}
+          />
+        )}
+
+        {activeTab === 'weather-sensors' && (
+          <WeatherClimateSensorsView
+            field={field}
+            state={state}
           />
         )}
 

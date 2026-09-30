@@ -9,10 +9,22 @@ import {
   Sliders,
   Scale,
   Network,
-  Award
+  Award,
+  Layers,
+  FlaskConical
 } from 'lucide-react';
 
-export type TabType = 'field-intel' | 'decision-diff' | 'rules' | 'simulator' | 'audit' | 'learning' | 'knowledge-graph' | 'scientific-benchmark';
+export type TabType =
+  | 'field-intel'
+  | 'multi-domain'
+  | 'weather-sensors'
+  | 'knowledge-graph'
+  | 'decision-diff'
+  | 'rules'
+  | 'simulator'
+  | 'audit'
+  | 'learning'
+  | 'scientific-benchmark';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -40,6 +52,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasSu
         >
           <Activity size={18} />
           <span>Field Intelligence</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === 'multi-domain' ? 'active' : ''}`}
+          onClick={() => setActiveTab('multi-domain')}
+        >
+          <FlaskConical size={18} />
+          <span>Multi-Domain Farm</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === 'weather-sensors' ? 'active' : ''}`}
+          onClick={() => setActiveTab('weather-sensors')}
+        >
+          <CloudRain size={18} />
+          <span>Weather & Sensors</span>
         </button>
 
         <button

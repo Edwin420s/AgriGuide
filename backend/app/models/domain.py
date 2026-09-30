@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 
 def uid() -> str: return str(uuid4())
+def utc_now() -> datetime: return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
@@ -13,7 +14,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     role: Mapped[str] = mapped_column(String(40), default="FARMER")
     language: Mapped[str] = mapped_column(String(20), default="en")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class Farm(Base):
     __tablename__ = "farms"
@@ -25,7 +26,7 @@ class Farm(Base):
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     area: Mapped[float | None] = mapped_column(Float, nullable=True)
     water_availability: Mapped[str] = mapped_column(String(40), default="LIMITED")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     fields: Mapped[list["Field"]] = relationship(back_populates="farm", cascade="all, delete-orphan")
 
 class Field(Base):
@@ -72,7 +73,7 @@ class Evidence(Base):
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE")
     provenance: Mapped[dict] = mapped_column(JSON, default=dict)
     raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class Belief(Base):
     __tablename__ = "beliefs"
@@ -85,8 +86,8 @@ class Belief(Base):
     uncertainty: Mapped[float] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE")
     revision_number: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class CognitiveRun(Base):
     __tablename__ = "cognitive_runs"
@@ -96,7 +97,7 @@ class CognitiveRun(Base):
     goal: Mapped[str] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(30), default="CREATED")
     world_state_version: Mapped[int] = mapped_column(Integer, default=1)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 class Decision(Base):
@@ -109,7 +110,7 @@ class Decision(Base):
     reason: Mapped[str] = mapped_column(Text)
     supersedes_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="ISSUED")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class DecisionReasoning(Base):
     __tablename__ = "decision_reasoning"
@@ -130,8 +131,8 @@ class Outcome(Base):
     type: Mapped[str] = mapped_column(String(60))
     observed_value: Mapped[dict] = mapped_column(JSON)
     confidence: Mapped[float] = mapped_column(Float, default=0.8)
-    observed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class LearningEvent(Base):
     __tablename__ = "learning_events"
@@ -145,7 +146,7 @@ class LearningEvent(Base):
     old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     new_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="OBSERVED")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class SourceReliability(Base):
     __tablename__ = "source_reliability"
@@ -155,7 +156,7 @@ class SourceReliability(Base):
     source_type: Mapped[str] = mapped_column(String(60))
     score: Mapped[float] = mapped_column(Float, default=0.7)
     samples: Mapped[int] = mapped_column(Integer, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
@@ -164,7 +165,7 @@ class AuditEvent(Base):
     entity_id: Mapped[str] = mapped_column(String(36))
     event_type: Mapped[str] = mapped_column(String(80))
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 class FieldRule(Base):
     __tablename__ = "field_rules"
@@ -177,6 +178,6 @@ class FieldRule(Base):
     metta_expr: Mapped[str | None] = mapped_column(Text, nullable=True)
     priority: Mapped[int] = mapped_column(Integer, default=10)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     field: Mapped[Field] = relationship(back_populates="rules")
 
