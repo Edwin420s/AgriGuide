@@ -208,3 +208,101 @@ class CognitiveService:
             "rule_changes": rule_changes
         }
 
+    def record_outcome(self, db: Session, decision: Decision, outcome_data: dict):
+        observed_val = outcome_data.get("observed_value")
+        if not isinstance(observed_val, dict):
+            observed_val = {"value": observed_val}
+            if "unit" in outcome_data:
+                observed_val["unit"] = outcome_data["unit"]
+
+        outcome = Outcome(
+            decision_id=decision.id,
+            field_id=decision.field_id,
+            type=outcome_data.get("type", "ACTUAL_RAINFALL"),
+            observed_value=observed_val,
+            confidence=outcome_data.get("confidence", 0.8),
+            observed_at=outcome_data.get("observed_at") or datetime.utcnow()
+        )
+        db.add(outcome)
+        db.flush()
+
+        pattern = "Outcome recorded for closed-loop evaluation."
+        old_val = None
+        new_val = None
+
+        # Check weather outcome calibration
+        if outcome.type in ("ACTUAL_RAINFALL", "RAINFALL_OBSERVATION"):
+            obs = outcome.observed_value
+            if isinstance(obs, (int, float)):
+                mm = float(obs)
+                actual_rain = mm > 1.0
+            elif isinstance(obs, dict):
+                mm = float(obs.get("millimeters", obs.get("value", 0.0)))
+                actual_rain = mm > 1.0 or bool(obs.get("rained", False))
+            else:
+                try:
+                    mm = float(obs)
+                    actual_rain = mm > 1.0
+                except (ValueError, TypeError):
+                    mm = 0.0
+                    actual_rain = False
+
+            # Find weather evidence related to field
+            weather_ev = (
+                db.query(Evidence)
+                .filter(Evidence.field_id == decision.field_id, Evidence.type == "WEATHER_FORECAST")
+                .order_by(Evidence.observed_at.desc())
+                .first()
+            )
+
+            if weather_ev:
+                forecast_prob = weather_ev.value.get("value", 50)
+                source_id = weather_ev.source_id or "demo-weather"
+                source_type = weather_ev.source_type or "WEATHER_PROVIDER"
+
+                # Accurate if predicted high rain and rained, or low rain and didn't rain
+                is_accurate = (forecast_prob >= 50 and actual_rain) or (forecast_prob < 50 and not actual_rain)
+                target_score = 0.92 if is_accurate else 0.45
+
+                rel = db.query(SourceReliability).filter(SourceReliability.source_id == source_id).first()
+                if not rel:
+                    rel = SourceReliability(
+                        source_id=source_id,
+                        source_type=source_type,
+                        score=0.70,
+                        samples=1
+                    )
+                    db.add(rel)
+                    db.flush()
+
+                old_val = rel.score
+                rel.samples += 1
+                rel.score = round(((rel.score * (rel.samples - 1)) + target_score) / rel.samples, 3)
+                rel.updated_at = datetime.utcnow()
+                new_val = rel.score
+
+                pattern = (
+                    f"Calibrated reliability for weather source '{source_id}': "
+                    f"Forecast was {forecast_prob}% rain, actual rainfall was {mm}mm. "
+                    f"Accuracy verified ({'Accurate' if is_accurate else 'Inaccurate'}). "
+                    f"Reliability updated from {old_val} to {new_val}."
+                )
+
+                # Record learning event
+                event = LearningEvent(
+                    field_id=decision.field_id,
+                    decision_id=decision.id,
+                    outcome_id=outcome.id,
+                    type="SOURCE_CALIBRATION",
+                    observation={"actual_rainfall_mm": mm, "forecast_probability": forecast_prob},
+                    pattern=pattern,
+                    old_value=old_val,
+                    new_value=new_val,
+                    status="APPLIED"
+                )
+                db.add(event)
+
+        self.audit(db, "outcome", outcome.id, "OUTCOME_RECEIVED", outcome.observed_value)
+        db.commit()
+        db.refresh(outcome)
+        return outcome
