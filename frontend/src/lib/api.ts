@@ -82,4 +82,27 @@ export const consultField = (fieldId: string, query: string, model?: string) =>
     body: JSON.stringify({ query, model })
   });
 
+// Extended Agricultural Platform APIs
+export const getKnowledgeGraph = (fieldId: string) => api<any>(`/fields/${fieldId}/graph`);
+export const evaluateDomain = (fieldId: string, domain: string, params: any = {}) =>
+  api<any>(`/fields/${fieldId}/domain/${domain}`, {
+    method: 'POST',
+    body: JSON.stringify({ params })
+  });
+export const getHolisticStatus = (fieldId: string) => api<any>(`/fields/${fieldId}/holistic`);
+export const proposeAction = (fieldId: string, actionType: string, proposedParams: any = {}) =>
+  api<any>(`/fields/${fieldId}/actions/propose`, {
+    method: 'POST',
+    body: JSON.stringify({ action_type: actionType, proposed_params: proposedParams })
+  });
+export const getFieldAnalytics = (fieldId: string) => api<any>(`/fields/${fieldId}/analytics`);
+export const checkSensorAnomaly = (fieldId: string, history: number[], currentValue: number, sensorType = 'soil_moisture') =>
+  api<any>(`/fields/${fieldId}/analytics/anomaly-check`, {
+    method: 'POST',
+    body: JSON.stringify({ history, current_value: currentValue, sensor_type: sensorType })
+  });
+export const replayDecision = (decisionId: string) => api<any>(`/decisions/${decisionId}/replay`);
+export const getModelRoutes = () => api<any>('/llm/routes');
+export const runBenchmark = () => api<any>('/benchmark/run', { method: 'POST' });
+
 

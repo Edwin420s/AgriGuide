@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.domain import (
     AuditEvent, Belief, CognitiveRun, Decision, DecisionReasoning,
@@ -41,11 +41,11 @@ class CognitiveService:
             )
             if old and old.value == value:
                 old.confidence = min(0.99, (old.confidence + e.confidence) / 2 + 0.02)
-                old.updated_at = datetime.utcnow()
+                old.updated_at = datetime.now(timezone.utc)
             else:
                 if old:
                     old.status = "SUPERSEDED"
-                    old.updated_at = datetime.utcnow()
+                    old.updated_at = datetime.now(timezone.utc)
                 b = Belief(
                     field_id=field_id,
                     subject=e.subject,
@@ -117,7 +117,7 @@ class CognitiveService:
             ))
 
         run.status = "COMPLETED"
-        run.completed_at = datetime.utcnow()
+        run.completed_at = datetime.now(timezone.utc)
 
         self.audit(
             db, "decision", decision.id, "DECISION_CREATED",
@@ -221,7 +221,7 @@ class CognitiveService:
             type=outcome_data.get("type", "ACTUAL_RAINFALL"),
             observed_value=observed_val,
             confidence=outcome_data.get("confidence", 0.8),
-            observed_at=outcome_data.get("observed_at") or datetime.utcnow()
+            observed_at=outcome_data.get("observed_at") or datetime.now(timezone.utc)
         )
         db.add(outcome)
         db.flush()
@@ -278,7 +278,7 @@ class CognitiveService:
                 old_val = rel.score
                 rel.samples += 1
                 rel.score = round(((rel.score * (rel.samples - 1)) + target_score) / rel.samples, 3)
-                rel.updated_at = datetime.utcnow()
+                rel.updated_at = datetime.now(timezone.utc)
                 new_val = rel.score
 
                 pattern = (

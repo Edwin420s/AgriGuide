@@ -7,7 +7,7 @@ declarative skills defined in `omega/skills/agriguide.metta`.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 import httpx
 from app.core.config import settings
@@ -73,7 +73,7 @@ class OmegaAgent:
                     "recommendation": rr.recommendation,
                     "confidence": rr.confidence,
                     "reason": rr.reason,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }]
                 return OmegaResult(rr, updated_mem[-20:], "omega-gateway")
             except Exception:
@@ -120,7 +120,7 @@ class OmegaAgent:
             "reason": reasoning_res.reason,
             "rules": reasoning_res.rules,
             "supersedes_prior": is_supersession,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "state_snapshot": {
                 "soil_moisture": state.get("soil_moisture"),
                 "rain_probability_24h": state.get("rain_probability_24h"),

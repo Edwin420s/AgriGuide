@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle, Database, FileText, GitBranch, GitCompare, Layers, Scale, ShieldCheck } from 'lucide-react';
-import { audit } from '../lib/api';
+import { CheckCircle, Database, FileText, GitBranch, GitCompare, Layers, Scale, ShieldCheck, PlayCircle, Award } from 'lucide-react';
+import { audit, replayDecision } from '../lib/api';
 
 interface AuditTrailViewProps {
   decisionId?: string;
@@ -11,6 +10,8 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ decisionId, deci
   const [selectedId, setSelectedId] = useState<string>(decisionId || (decisions[0]?.id ?? ''));
   const [auditData, setAuditData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [replayCert, setReplayCert] = useState<any>(null);
+  const [replaying, setReplaying] = useState<boolean>(false);
 
   useEffect(() => {
     if (decisionId) {
@@ -38,6 +39,19 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ decisionId, deci
     }
   };
 
+  const handleReplay = async () => {
+    if (!selectedId) return;
+    setReplaying(true);
+    try {
+      const cert = await replayDecision(selectedId);
+      setReplayCert(cert);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setReplaying(false);
+    }
+  };
+
   return (
     <div className="tab-container">
       <div className="tab-header">
@@ -54,7 +68,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ decisionId, deci
           <div className="decision-selector">
             <label>
               <span>Inspect Decision:</span>
-              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+              <select value={selectedId} onChange={(e) => { setSelectedId(e.target.value); setReplayCert(null); }}>
                 {decisions.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.recommendation} ({new Date(d.created_at).toLocaleTimeString()}) {d.supersedes_id ? '· Revised' : ''}
@@ -86,11 +100,55 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ decisionId, deci
                 <small>Decision ID: {auditData.decision.id} · Issued {new Date(auditData.decision.created_at).toLocaleString()}</small>
               </div>
             </div>
-            <div className="summary-right">
-              <ShieldCheck size={28} className="shield-good" />
-              <span>Audited & Verified</span>
+            <div className="summary-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={24} className="shield-good" />
+                <span>Audited & Verified</span>
+              </div>
+              <button
+                className="btn-replay"
+                onClick={handleReplay}
+                disabled={replaying}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#244e33',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <PlayCircle size={15} />
+                <span>{replaying ? 'Replaying...' : 'Replay Deterministic Proof'}</span>
+              </button>
             </div>
           </div>
+
+          {/* Replay Verification Certificate */}
+          {replayCert && (
+            <div className="replay-cert-banner" style={{ background: '#f4fbf6', border: '1px solid #7bc695', borderRadius: '8px', padding: '16px', margin: '16px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Award size={20} color="#1b5e20" />
+                <h4 style={{ margin: 0, color: '#1b5e20' }}>Deterministic Replay Certificate: {replayCert.status}</h4>
+                {replayCert.is_exact_match && (
+                  <span style={{ background: '#d4edda', color: '#155724', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                    100% EXACT MATCH
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#2e5b3f' }}>{replayCert.explanation}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '12px', background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #d9e9df' }}>
+                <div>Original Recommendation: <strong>{replayCert.original_recommendation}</strong> ({Math.round(replayCert.original_confidence * 100)}%)</div>
+                <div>Replayed Recommendation: <strong>{replayCert.replayed_recommendation}</strong> ({Math.round(replayCert.replayed_confidence * 100)}%)</div>
+                <div>Rules Fired: <code>{replayCert.replayed_rules?.join(', ')}</code></div>
+              </div>
+            </div>
+          )}
 
           {/* Counterfactual Trade-off Analysis */}
           {auditData.counterfactuals && (

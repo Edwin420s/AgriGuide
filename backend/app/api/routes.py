@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.db.session import get_db
@@ -10,15 +10,27 @@ from app.schemas.api import (
     EvidenceCreate, FarmerObservation, DecisionRequest, OutcomeCreate,
     FieldRuleCreate, WhatIfSimulateRequest, FarmerConsultRequest,
     FarmerConsultResponse, LLMStatusResponse, SwitchModelRequest,
-    ModelsListResponse
+    ModelsListResponse, ActionProposalRequest, AnomalyCheckRequest,
+    DomainEvaluateRequest
 )
 from app.services.cognitive import CognitiveService
 from app.services.llm import LLMService
 from app.services.metta_runner import metta_service
+from app.services.domain_reasoners import MultiDomainAgriculturalEngine
+from app.services.ml_analytics import AgriculturalMLService, SensorAnomalyDetector
+from app.services.safety_policies import SafetyPolicyEngine
+from app.services.decision_replay import DecisionReplayEngine
+from app.services.model_router import task_router
+from app.services.benchmark import benchmark_suite
 
 router = APIRouter()
 cognitive = CognitiveService()
 llm = LLMService()
+domain_engine = MultiDomainAgriculturalEngine()
+ml_analytics = AgriculturalMLService()
+anomaly_detector = SensorAnomalyDetector()
+safety_policy = SafetyPolicyEngine()
+replay_engine = DecisionReplayEngine()
 
 @router.get("/health")
 def health():
@@ -159,7 +171,7 @@ def farmer_observation(field_id: str, payload: FarmerObservation, db: Session = 
         subject=field_id,
         predicate=parsed.predicate,
         value=parsed.value,
-        observed_at=datetime.utcnow(),
+        observed_at=datetime.now(timezone.utc),
         confidence=parsed.confidence,
         provenance={"extractor": "llm-interface"},
         raw_payload={"message": payload.message}
@@ -511,3 +523,196 @@ def timeline(field_id: str, db: Session = Depends(get_db)):
     rows += [{"time": d.created_at.isoformat(), "kind": "decision", "title": d.recommendation, "detail": d.reason} for d in ds]
     rows += [{"time": o.observed_at.isoformat(), "kind": "outcome", "title": o.type, "detail": o.observed_value} for o in out]
     return sorted(rows, key=lambda x: x["time"])
+
+
+# ====================================================================
+# Extended Agricultural Intelligence Platform Endpoints
+# ====================================================================
+
+@router.get("/fields/{field_id}/graph")
+def get_field_knowledge_graph(field_id: str, db: Session = Depends(get_db)):
+    """Returns the explicit Agricultural Knowledge Graph (entities, triples, causal paths, MeTTa atoms)."""
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    kg = cognitive.world.build_knowledge_graph(db, f)
+    return kg.to_dict()
+
+
+@router.post("/fields/{field_id}/domain/{domain_name}")
+def evaluate_domain(field_id: str, domain_name: str, payload: DomainEvaluateRequest, db: Session = Depends(get_db)):
+    """Evaluates multi-domain agricultural logic: planting, fertilization, crop_health, weather_risk, harvest."""
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    st = cognitive.world.build(db, f)
+    # Merge custom query params
+    merged_state = {**st, **payload.params}
+
+    d = domain_name.lower().strip()
+    if d == "planting":
+        res = domain_engine.evaluate_planting(merged_state)
+    elif d in {"fertilizer", "fertilization"}:
+        res = domain_engine.evaluate_fertilization(merged_state)
+    elif d in {"crop_health", "health"}:
+        res = domain_engine.evaluate_crop_health(merged_state)
+    elif d in {"weather_risk", "risk"}:
+        res = domain_engine.evaluate_weather_risk(merged_state)
+    elif d == "harvest":
+        res = domain_engine.evaluate_harvest(merged_state)
+    else:
+        raise HTTPException(400, f"Unsupported domain '{domain_name}'. Valid: planting, fertilization, crop_health, weather_risk, harvest")
+
+    return {
+        "domain": res.domain,
+        "recommendation": res.recommendation,
+        "confidence": res.confidence,
+        "reason": res.reason,
+        "rules": res.rules,
+        "steps": res.steps,
+        "action_params": res.action_params,
+        "counterfactuals": res.counterfactuals
+    }
+
+
+@router.get("/fields/{field_id}/holistic")
+def evaluate_holistic(field_id: str, db: Session = Depends(get_db)):
+    """Runs simultaneous cross-domain evaluation across all agricultural operations for the field."""
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    st = cognitive.world.build(db, f)
+    holistic = domain_engine.evaluate_holistic(st)
+    return {
+        "field_id": field_id,
+        "crop": f.crop,
+        "growth_stage": f.growth_stage,
+        "domains": {
+            k: {
+                "recommendation": v.recommendation,
+                "confidence": v.confidence,
+                "reason": v.reason,
+                "rules": v.rules,
+                "action_params": v.action_params
+            }
+            for k, v in holistic.items()
+        }
+    }
+
+
+@router.post("/fields/{field_id}/actions/propose")
+def propose_action(field_id: str, payload: ActionProposalRequest, db: Session = Depends(get_db)):
+    """Deterministic policy gatekeeper: checks physical safety constraints before actuation."""
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    st = cognitive.world.build(db, f)
+    check = safety_policy.verify_action(payload.action_type, payload.proposed_params, st)
+    return {
+        "field_id": field_id,
+        "action_type": payload.action_type,
+        "allowed": check.allowed,
+        "status": check.status,
+        "clamped_params": check.clamped_params,
+        "violations": check.violations,
+        "audit_notes": check.audit_notes
+    }
+
+
+@router.get("/fields/{field_id}/analytics")
+def get_field_analytics(field_id: str, db: Session = Depends(get_db)):
+    """Computes FAO-56 reference ET0, crop-specific ETc, and 24h/48h root-zone depletion forecast."""
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+    st = cognitive.world.build(db, f)
+
+    temp = st.get("temperature_c", 25.0)
+    humidity = st.get("humidity_pct", 55.0)
+    wind = st.get("wind_speed_kmh", 12.0)
+    soil_moisture = st.get("soil_moisture", 18.0)
+
+    et0 = ml_analytics.estimate_et0(temp, humidity, wind)
+    demand = ml_analytics.calculate_crop_water_demand(f.crop, f.growth_stage, et0)
+    depletion = ml_analytics.forecast_soil_depletion(soil_moisture, demand["crop_demand_etc_mm_day"], f.soil_type)
+
+    return {
+        "field_id": field_id,
+        "crop": f.crop,
+        "growth_stage": f.growth_stage,
+        "evapotranspiration": demand,
+        "soil_moisture_depletion": depletion
+    }
+
+
+@router.post("/fields/{field_id}/analytics/anomaly-check")
+def check_sensor_anomaly(field_id: str, payload: AnomalyCheckRequest):
+    """Detects telemetry spikes, frozen lines, or unphysical values."""
+    res = anomaly_detector.detect(payload.history, payload.current_value, payload.sensor_type)
+    return {
+        "field_id": field_id,
+        "is_anomalous": res.is_anomalous,
+        "anomaly_type": res.anomaly_type,
+        "severity": res.severity,
+        "confidence_penalty": res.confidence_penalty,
+        "description": res.description,
+        "corrected_value": res.corrected_value
+    }
+
+
+@router.get("/decisions/{decision_id}/replay")
+def replay_decision(decision_id: str, db: Session = Depends(get_db)):
+    """Deterministically replays a historical decision to verify proof derivation consistency."""
+    try:
+        cert = replay_engine.replay_decision(db, decision_id)
+        return {
+            "decision_id": cert.decision_id,
+            "status": cert.status,
+            "is_exact_match": cert.is_exact_match,
+            "original_recommendation": cert.original_recommendation,
+            "replayed_recommendation": cert.replayed_recommendation,
+            "original_confidence": cert.original_confidence,
+            "replayed_confidence": cert.replayed_confidence,
+            "original_rules": cert.original_rules,
+            "replayed_rules": cert.replayed_rules,
+            "explanation": cert.explanation,
+            "replayed_steps": cert.replayed_steps,
+            "timestamp": cert.replay_timestamp
+        }
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/llm/routes")
+def get_model_routes():
+    """Returns the intelligent model routing table across the 5 ASI Cloud models."""
+    return {
+        "routes": task_router.get_routing_table()
+    }
+
+
+@router.post("/benchmark/run")
+def run_benchmark():
+    """Executes the full 10-point scientific agricultural simulation benchmark."""
+    scorecard = benchmark_suite.run_all()
+    return {
+        "total_tests": scorecard.total_tests,
+        "passed_tests": scorecard.passed_tests,
+        "overall_score_pct": scorecard.overall_score_pct,
+        "duration_ms": scorecard.duration_ms,
+        "timestamp": scorecard.timestamp,
+        "results": [
+            {
+                "category": r.category,
+                "scenario_name": r.scenario_name,
+                "passed": r.passed,
+                "score": r.score,
+                "expected": r.expected,
+                "actual": r.actual,
+                "duration_ms": r.duration_ms,
+                "details": r.details
+            }
+            for r in scorecard.results
+        ]
+    }
+

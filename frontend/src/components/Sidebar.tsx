@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Activity,
   BrainCircuit,
@@ -8,10 +7,12 @@ import {
   Sprout,
   TrendingUp,
   Sliders,
-  Scale
+  Scale,
+  Network,
+  Award
 } from 'lucide-react';
 
-export type TabType = 'field-intel' | 'decision-diff' | 'rules' | 'simulator' | 'audit' | 'learning';
+export type TabType = 'field-intel' | 'decision-diff' | 'rules' | 'simulator' | 'audit' | 'learning' | 'knowledge-graph' | 'scientific-benchmark';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -39,6 +40,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasSu
         >
           <Activity size={18} />
           <span>Field Intelligence</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === 'knowledge-graph' ? 'active' : ''}`}
+          onClick={() => setActiveTab('knowledge-graph')}
+        >
+          <Network size={18} />
+          <span>Knowledge Graph</span>
         </button>
 
         <button
@@ -80,6 +89,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasSu
         >
           <TrendingUp size={18} />
           <span>Closed-Loop Learning</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === 'scientific-benchmark' ? 'active' : ''}`}
+          onClick={() => setActiveTab('scientific-benchmark')}
+        >
+          <Award size={18} />
+          <span>Scientific Benchmark</span>
         </button>
       </nav>
 

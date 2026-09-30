@@ -8,6 +8,8 @@ import { RuleLearningEditor } from './components/RuleLearningEditor';
 import { WhatIfSimulator } from './components/WhatIfSimulator';
 import { AuditTrailView } from './components/AuditTrailView';
 import { LearningCenter } from './components/LearningCenter';
+import { KnowledgeGraphView } from './components/KnowledgeGraphView';
+import { ScientificBenchmarkView } from './components/ScientificBenchmarkView';
 import {
   getFields,
   getField,
@@ -211,12 +213,23 @@ function App() {
           />
         )}
 
+        {activeTab === 'knowledge-graph' && (
+          <KnowledgeGraphView
+            fieldId={selectedFieldId}
+            fieldName={field?.name || 'Selected Field'}
+          />
+        )}
+
         {activeTab === 'learning' && (
           <LearningCenter
             fieldId={selectedFieldId}
             latestDecisionId={decisions[0]?.id}
             onOutcomeAdded={refreshCurrentField}
           />
+        )}
+
+        {activeTab === 'scientific-benchmark' && (
+          <ScientificBenchmarkView />
         )}
       </main>
     </div>

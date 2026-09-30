@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
+from typing import Any
 
 class EvidenceCreate(BaseModel):
     type: str
@@ -114,5 +115,14 @@ class LLMStatusResponse(BaseModel):
     available_models: list[str]
     models_metadata: list[ModelInfo] = []
 
+class ActionProposalRequest(BaseModel):
+    action_type: str
+    proposed_params: dict[str, Any] = {}
 
+class AnomalyCheckRequest(BaseModel):
+    history: list[float]
+    current_value: float
+    sensor_type: str = "soil_moisture"
 
+class DomainEvaluateRequest(BaseModel):
+    params: dict[str, Any] = {}
