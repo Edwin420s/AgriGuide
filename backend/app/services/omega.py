@@ -53,3 +53,43 @@ class OmegaAgent:
         if settings.omega_mode == "external" and settings.omega_url:
             try:
                 r = httpx.post(
+                    settings.omega_url,
+                    json={"agent_id": self.agent_id, "goal": goal, "state": state, "memory": memory},
+                    timeout=20
+                )
+                r.raise_for_status()
+                payload = r.json()
+                rr = ReasoningResult(
+                    recommendation=payload["recommendation"],
+                    confidence=payload["confidence"],
+                    reason=payload["reason"],
+                    rules=payload.get("rules", []),
+                    steps=payload.get("steps", []),
+                    source="omega-gateway",
+                    counterfactuals=payload.get("counterfactuals", {})
+                )
+                updated_mem = memory + [{
+                    "goal": goal,
+                    "recommendation": rr.recommendation,
+                    "confidence": rr.confidence,
+                    "reason": rr.reason,
+                    "timestamp": datetime.utcnow().isoformat()
+                }]
+                return OmegaResult(rr, updated_mem[-20:], "omega-gateway")
+            except Exception:
+                pass  # Fall back gracefully to native local Omega-MeTTa engine
+
+        # 2. Native Omega-MeTTa Cognitive Cycle
+        # Step A: Reconcile with persistent episodic memory
+        reconciliation_step = self._reconcile_memory(state, memory)
+
+        # Step B: Execute MeTTa skill contract reasoning
+        reasoning_res = self.reasoner.decide(state)
+
+        # Step C: Prepend Omega Cognitive Memory & Ingestion Steps to reasoning trace
+        omega_steps: list[dict[str, Any]] = [
+            {
+                "sequence": 1,
+                "type": "OMEGA_AGENT_INIT",
+                "rule_id": "OMEGA-CORE-CYCLE",
+                "input": {"agent_id": self.agent_id, "goal": goal, "skill": self.skill_contract},
