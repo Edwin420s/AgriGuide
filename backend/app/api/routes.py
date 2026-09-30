@@ -138,3 +138,43 @@ def farmer_observation(field_id: str, payload: FarmerObservation, db: Session = 
     )
     db.add(e)
     db.commit()
+    db.refresh(e)
+    cognitive.audit(db, "evidence", e.id, "FARMER_OBSERVATION_PARSED", {"message": payload.message, "predicate": parsed.predicate})
+    db.commit()
+    return {"evidence_id": e.id, "predicate": parsed.predicate, "value": parsed.value, "confidence": parsed.confidence}
+
+@router.get("/fields/{field_id}/beliefs")
+def beliefs(field_id: str, db: Session = Depends(get_db)):
+    return [
+        {
+            "id": b.id,
+            "predicate": b.predicate,
+            "value": b.value,
+            "confidence": b.confidence,
+            "status": b.status,
+            "revision": b.revision_number
+        }
+        for b in db.query(Belief).filter(Belief.field_id == field_id).order_by(Belief.updated_at.desc()).all()
+    ]
+
+# --- Custom Field Rules ("The Agent That Grows Up") ---
+
+@router.get("/fields/{field_id}/rules")
+def get_field_rules(field_id: str, db: Session = Depends(get_db)):
+    rules = db.query(FieldRule).filter(FieldRule.field_id == field_id).order_by(FieldRule.priority.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "field_id": r.field_id,
+            "name": r.name,
+            "description": r.description,
+            "condition": r.condition,
+            "action": r.action,
+            "metta_expr": r.metta_expr,
+            "priority": r.priority,
+            "is_active": r.is_active,
+            "created_at": r.created_at.isoformat()
+        }
+        for r in rules
+    ]
+
