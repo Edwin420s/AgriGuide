@@ -110,3 +110,48 @@ def tokenize(text: str) -> list[str]:
     return tokens
 
 def parse_tokens(tokens: list[str]) -> list[Any]:
+    def parse_one(idx: int) -> tuple[Any, int]:
+        if idx >= len(tokens):
+            return None, idx
+        token = tokens[idx]
+        if token == '(':
+            idx += 1
+            children = []
+            while idx < len(tokens) and tokens[idx] != ')':
+                child, idx = parse_one(idx)
+                if child is not None:
+                    children.append(child)
+            return Expression(children), idx + 1
+        elif token == ')':
+            return None, idx + 1
+        elif token.startswith('$'):
+            return Variable(token[1:]), idx + 1
+        else:
+            # Check number or bool
+            if token.lower() == 'true':
+                return True, idx + 1
+            if token.lower() == 'false':
+                return False, idx + 1
+            try:
+                if '.' in token:
+                    return float(token), idx + 1
+                return int(token), idx + 1
+            except ValueError:
+                return Symbol(token), idx + 1
+
+    expressions = []
+    i = 0
+    while i < len(tokens):
+        # Ignore leading ! query marker for declarations
+        if tokens[i] == '!':
+            i += 1
+            expr, i = parse_one(i)
+            if expr:
+                expressions.append(('query', expr))
+        else:
+            expr, i = parse_one(i)
+            if expr:
+                expressions.append(('def', expr))
+    return expressions
+
+class MettaSpace:
