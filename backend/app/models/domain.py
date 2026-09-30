@@ -168,3 +168,15 @@ class AuditEvent(Base):
 
 class FieldRule(Base):
     __tablename__ = "field_rules"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text)
+    condition: Mapped[dict] = mapped_column(JSON)
+    action: Mapped[str] = mapped_column(String(40))
+    metta_expr: Mapped[str | None] = mapped_column(Text, nullable=True)
+    priority: Mapped[int] = mapped_column(Integer, default=10)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    field: Mapped[Field] = relationship(back_populates="rules")
+
