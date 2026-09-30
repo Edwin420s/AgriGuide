@@ -188,3 +188,43 @@ class MettaSpace:
 class MettaInterpreter:
     """Interprets MeTTa expressions against a MettaSpace."""
     def __init__(self, space: MettaSpace):
+        self.space = space
+        self.trace_steps: list[dict[str, Any]] = []
+
+    def pattern_match(self, pattern: Any, target: Any, bindings: dict[str, Any]) -> bool:
+        if isinstance(pattern, Variable):
+            var_name = pattern.name
+            if var_name in bindings:
+                return bindings[var_name] == target
+            bindings[var_name] = target
+            return True
+        elif isinstance(pattern, Symbol) and isinstance(target, Symbol):
+            return pattern.name.lower() == target.name.lower()
+        elif isinstance(pattern, Expression) and isinstance(target, Expression):
+            if len(pattern.children) != len(target.children):
+                return False
+            for p, t in zip(pattern.children, target.children):
+                if not self.pattern_match(p, t, bindings):
+                    return False
+            return True
+        elif type(pattern) == type(target):
+            return pattern == target
+        return False
+
+    def substitute(self, expr: Any, bindings: dict[str, Any]) -> Any:
+        if isinstance(expr, Variable):
+            return bindings.get(expr.name, expr)
+        elif isinstance(expr, Expression):
+            return Expression([self.substitute(c, bindings) for c in self.children_of(expr)])
+        return expr
+
+    def children_of(self, expr: Expression) -> list[Any]:
+        return expr.children
+
+    def evaluate(self, expr: Any) -> Any:
+        if not isinstance(expr, Expression):
+            return expr
+
+        children = expr.children
+        if not children:
+            return expr
