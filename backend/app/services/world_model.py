@@ -83,3 +83,27 @@ class WorldModelService:
 
         base_soil_conf = soil.confidence if soil else 0.0
         base_weather_conf = rain.confidence if rain else 0.0
+
+        # Adjust confidence for conflict
+        adj_soil_conf = max(0.2, base_soil_conf - (conflict_penalty if any(c["predicate"] == "soil_moisture" for c in conflicts) else 0.0))
+        adj_weather_conf = max(0.2, base_weather_conf - (conflict_penalty if any(c["predicate"] == "rain_probability_24h" for c in conflicts) else 0.0))
+
+        return {
+            "field_id": field.id,
+            "crop": field.crop,
+            "growth_stage": field.growth_stage,
+            "crop_water_demand": crop_demand,
+            "soil_moisture": (soil.value.get("value") if soil else None),
+            "soil_confidence": round(adj_soil_conf, 2),
+            "soil_source": (soil.source_type if soil else None),
+            "rain_probability_24h": (rain.value.get("value") if rain else None),
+            "weather_confidence": round(adj_weather_conf, 2),
+            "weather_source": (rain.source_type if rain else None),
+            "current_rainfall": (current.value.get("value") if current else False),
+            "water_availability": field.farm.water_availability if field.farm else "LIMITED",
+            "evidence_count": len(evidences),
+            "has_conflicts": len(conflicts) > 0,
+            "conflicts": conflicts,
+            "custom_rules": rules_payload,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
