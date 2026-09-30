@@ -123,3 +123,23 @@ class DecisionReasoning(Base):
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
 
 class Outcome(Base):
+    __tablename__ = "outcomes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    decision_id: Mapped[str] = mapped_column(ForeignKey("decisions.id"))
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    type: Mapped[str] = mapped_column(String(60))
+    observed_value: Mapped[dict] = mapped_column(JSON)
+    confidence: Mapped[float] = mapped_column(Float, default=0.8)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class LearningEvent(Base):
+    __tablename__ = "learning_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    field_id: Mapped[str] = mapped_column(ForeignKey("fields.id"))
+    decision_id: Mapped[str] = mapped_column(ForeignKey("decisions.id"), nullable=True)
+    outcome_id: Mapped[str] = mapped_column(ForeignKey("outcomes.id"), nullable=True)
+    type: Mapped[str] = mapped_column(String(80))
+    observation: Mapped[dict] = mapped_column(JSON)
+    pattern: Mapped[str] = mapped_column(Text)
+    old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
