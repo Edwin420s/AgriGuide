@@ -458,3 +458,93 @@ class MettaService:
         interpreter = MettaInterpreter(space)
 
         # Construct query expression: (irrigation-decision $soil $rain $water $current-rain)
+        c_rain_val = True if current_rain else False
+        query = Expression([
+            Symbol("irrigation-decision"),
+            soil,
+            rain,
+            Symbol(water.lower()),
+            c_rain_val
+        ])
+
+        # First evaluate custom rules if present
+        eval_result = None
+        fired_custom_rule = None
+        if custom_rules:
+            for rule in custom_rules:
+                if not rule.get("is_active", True):
+                    continue
+                cond = rule.get("condition", {})
+                if "rain_threshold_min" in cond and rain >= cond["rain_threshold_min"]:
+                    eval_result = Symbol(rule.get("action", "WAIT"))
+                    fired_custom_rule = rule.get("name", "Custom Field Rule")
+                    interpreter.trace_steps.append({
+                        "type": "CUSTOM_RULE_MATCH",
+                        "rule_name": fired_custom_rule,
+                        "condition": f"rain ({rain}%) >= threshold ({cond['rain_threshold_min']}%)",
+                        "action": rule.get("action", "WAIT")
+                    })
+                    break
+
+        if eval_result is None:
+            eval_result = interpreter.evaluate(query)
+
+        rec = "REASSESS"
+        if isinstance(eval_result, Symbol):
+            rec = eval_result.name.upper()
+        elif isinstance(eval_result, str):
+            rec = eval_result.upper()
+
+        rule_id = fired_custom_rule or self._map_rule_id(rec)
+
+        # Map steps for the audit trail
+        formatted_steps = []
+        for i, s in enumerate(interpreter.trace_steps, 1):
+            formatted_steps.append({
+                "sequence": i,
+                "type": s.get("type", "METTA_STEP"),
+                "rule_id": s.get("rule_head") or s.get("rule_name") or rule_id,
+                "input": s.get("bindings") or {"soil": soil, "rain": rain},
+                "output": s.get("result") or s.get("output") or rec,
+                "confidence": 0.92
+            })
+
+        cf = self.evaluate_counterfactuals(soil, rain, water)
+        return MettaExecutionResult(
+            recommendation=rec,
+            confidence=0.91 if fired_custom_rule else 0.88,
+            reason=self._format_reason(rec, soil, rain, water, current_rain, fired_custom_rule),
+            rules=[rule_id],
+            steps=formatted_steps,
+            source="metta-embedded",
+            counterfactuals=cf,
+            raw_output=repr(eval_result)
+        )
+
+    def evaluate_counterfactuals(self, soil: float, rain: float, water: str = "limited") -> dict[str, Any]:
+        """Symbolic counterfactual trade-off analysis (What if you irrigate vs what if you wait?)."""
+        is_high_rain = rain >= 70
+        is_low_rain = rain < 35
+        
+        if is_high_rain:
+            irrigate_eff = "POOR"
+            irrigate_risk = "Root leaching & reservoir water waste"
+            irrigate_impact = f"Wastes limited reservoir water when high rainfall ({rain}%) is imminent."
+            irrigate_rec = "AVOID"
+        else:
+            irrigate_eff = "OPTIMAL"
+            irrigate_risk = "Moisture stress relief"
+            irrigate_impact = "Directly replenishes root zone before critical moisture stress occurs."
+            irrigate_rec = "PROCEED"
+
+        if is_low_rain:
+            wait_eff = "NEUTRAL"
+            wait_risk = "Severe crop water stress"
+            wait_impact = f"With only {rain}% rain probability, delaying irrigation risks crop yield loss."
+            wait_rec = "AVOID"
+        else:
+            wait_eff = "HIGH"
+            wait_risk = "Minimal - natural rainfall compensates"
+            wait_impact = f"Conserves limited irrigation reserves while relying on expected {rain}% rainfall."
+            wait_rec = "PROCEED"
+
