@@ -155,3 +155,36 @@ def parse_tokens(tokens: list[str]) -> list[Any]:
     return expressions
 
 class MettaSpace:
+    """In-memory symbolic space for MeTTa knowledge and rewrite rules."""
+    def __init__(self):
+        self.rules: list[tuple[Any, Any]] = []  # (= head body)
+        self.facts: list[Any] = []
+
+    def load_file(self, filepath: str | Path):
+        path = Path(filepath)
+        if not path.is_file():
+            return
+        text = path.read_text(encoding="utf-8")
+        parsed = parse_tokens(tokenize(text))
+        for kind, expr in parsed:
+            if isinstance(expr, Expression) and len(expr.children) >= 3 and expr.children[0] == Symbol('='):
+                head = expr.children[1]
+                body = expr.children[2]
+                self.rules.append((head, body))
+            else:
+                self.facts.append(expr)
+
+    def add_rule_string(self, rule_text: str):
+        parsed = parse_tokens(tokenize(rule_text))
+        for kind, expr in parsed:
+            if isinstance(expr, Expression) and len(expr.children) >= 3 and expr.children[0] == Symbol('='):
+                head = expr.children[1]
+                body = expr.children[2]
+                # Prepend so newer/farmer custom rules take precedence
+                self.rules.insert(0, (head, body))
+            else:
+                self.facts.append(expr)
+
+class MettaInterpreter:
+    """Interprets MeTTa expressions against a MettaSpace."""
+    def __init__(self, space: MettaSpace):
