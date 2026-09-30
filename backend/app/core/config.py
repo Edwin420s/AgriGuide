@@ -27,7 +27,18 @@ class Settings(BaseSettings):
     asi_cloud_url: str = "https://llm.c.singularitynet.io/v1"
     asi_cloud_model: str = "minimax/minimax-m3"
     openai_api_key: str = ""
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(str(PROJECT_ROOT / ".env"), ".env"),
+        extra="ignore"
+    )
+
+    @property
+    def resolved_database_url(self) -> str:
+        if self.database_url.startswith("sqlite:////"):
+            return self.database_url
+        if self.database_url.startswith("sqlite:///./") or self.database_url == "sqlite:///agriguide.db":
+            return f"sqlite:///{PROJECT_ROOT / 'agriguide.db'}"
+        return self.database_url
 
 settings = Settings()
 
