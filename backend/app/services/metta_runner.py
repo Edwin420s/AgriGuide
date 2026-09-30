@@ -548,3 +548,59 @@ class MettaService:
             wait_impact = f"Conserves limited irrigation reserves while relying on expected {rain}% rainfall."
             wait_rec = "PROCEED"
 
+        return {
+            "if_irrigate": {
+                "action": "IRRIGATE",
+                "efficiency": irrigate_eff,
+                "risk": irrigate_risk,
+                "impact": irrigate_impact,
+                "recommendation": irrigate_rec
+            },
+            "if_wait": {
+                "action": "WAIT",
+                "efficiency": wait_eff,
+                "risk": wait_risk,
+                "impact": wait_impact,
+                "recommendation": wait_rec
+            }
+        }
+
+    def _map_rule_id(self, rec: str) -> str:
+        if rec == "IRRIGATE":
+            return "R-LOW-MOISTURE-LOW-RAIN"
+        elif rec == "WAIT":
+            return "R-HIGH-RAIN-WATER-CONSERVATION"
+        return "R-UNCERTAIN-OR-BALANCED"
+
+    def _format_reason(
+        self,
+        rec: str,
+        soil: float,
+        rain: float,
+        water: str,
+        current_rain: bool,
+        custom_rule_name: str | None = None
+    ) -> str:
+        if custom_rule_name:
+            return (
+                f"Adapted by custom rule '{custom_rule_name}': rain forecast is {rain}%, "
+                f"so immediate irrigation is paused to conserve water resources."
+            )
+        if current_rain:
+            return "Rain is currently falling on the field; irrigation is paused to prevent waterlogging."
+        if rec == "WAIT":
+            return (
+                f"Soil moisture is {soil}%, but rain probability is {rain}% in the next 24h. "
+                f"With {water.lower()} water availability, waiting for natural precipitation is the optimal decision."
+            )
+        elif rec == "IRRIGATE":
+            return (
+                f"Soil moisture is critically low at {soil}%, and rain probability is only {rain}%. "
+                f"Immediate irrigation is recommended to protect the crop."
+            )
+        return (
+            f"Soil moisture ({soil}%) and rain forecast ({rain}%) indicate balanced or uncertain conditions. "
+            f"Monitor sensor readings and reassess after the next weather cycle."
+        )
+
+metta_service = MettaService()
