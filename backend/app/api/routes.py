@@ -268,3 +268,167 @@ def audit(decision_id: str, db: Session = Depends(get_db)):
         .all()
     )
     evidence = (
+        db.query(Evidence)
+        .filter(Evidence.field_id == d.field_id)
+        .order_by(Evidence.observed_at.desc())
+        .limit(20)
+        .all()
+    )
+    outcomes = db.query(Outcome).filter(Outcome.decision_id == decision_id).all()
+    diff = cognitive.get_decision_diff(db, decision_id) if d.supersedes_id else None
+
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == d.field_id).first()
+    f_state = cognitive.world.build(db, f) if f else {}
+    cf = metta_service.evaluate_counterfactuals(
+        f_state.get("soil_moisture") or 18.0,
+        f_state.get("rain_probability_24h") or 20.0,
+        f_state.get("water_availability") or "LIMITED"
+    )
+
+    return {
+        "decision": {
+            "id": d.id,
+            "recommendation": d.recommendation,
+            "confidence": d.confidence,
+            "reason": d.reason,
+            "supersedes_id": d.supersedes_id,
+            "created_at": d.created_at.isoformat()
+        },
+        "reasoning": [
+            {
+                "sequence": r.sequence_number,
+                "type": r.step_type,
+                "rule_id": r.rule_id,
+                "input": r.input_data,
+                "output": r.output_data,
+                "confidence": r.confidence
+            }
+            for r in reasoning
+        ],
+        "evidence": [
+            {
+                "id": e.id,
+                "type": e.type,
+                "predicate": e.predicate,
+                "value": e.value,
+                "confidence": e.confidence,
+                "source_type": e.source_type,
+                "observed_at": e.observed_at.isoformat()
+            }
+            for e in evidence
+        ],
+        "outcomes": [
+            {
+                "id": o.id,
+                "type": o.type,
+                "value": o.observed_value,
+                "observed_at": o.observed_at.isoformat()
+            }
+            for o in outcomes
+        ],
+        "diff": diff,
+        "counterfactuals": cf
+    }
+
+@router.get("/decisions/{decision_id}/diff")
+def decision_diff(decision_id: str, db: Session = Depends(get_db)):
+    diff = cognitive.get_decision_diff(db, decision_id)
+    if not diff:
+        raise HTTPException(404, "No supersession diff found for this decision.")
+    return diff
+
+# --- Interactive What-If Simulation ---
+
+@router.post("/fields/{field_id}/simulate")
+def simulate(field_id: str, payload: WhatIfSimulateRequest, db: Session = Depends(get_db)):
+    f = db.query(Field).options(joinedload(Field.farm)).filter(Field.id == field_id).first()
+    if not f:
+        raise HTTPException(404, "Field not found")
+
+    base_state = cognitive.world.build(db, f)
+
+    # Override with simulated parameters
+    sim_state = dict(base_state)
+    if payload.soil_moisture is not None:
+        sim_state["soil_moisture"] = payload.soil_moisture
+    if payload.rain_probability_24h is not None:
+        sim_state["rain_probability_24h"] = payload.rain_probability_24h
+    if payload.water_availability is not None:
+        sim_state["water_availability"] = payload.water_availability
+    sim_state["current_rainfall"] = payload.current_rainfall
+    if payload.crop_water_demand is not None:
+        sim_state["crop_water_demand"] = payload.crop_water_demand
+
+    # If farmer custom rule test included
+    if payload.custom_rule_action and payload.custom_rule_rain_min is not None:
+        sim_rules = list(sim_state.get("custom_rules", []))
+        sim_rules.insert(0, {
+            "name": "Simulated Farmer Rule",
+            "action": payload.custom_rule_action,
+            "condition": {"rain_threshold_min": payload.custom_rule_rain_min},
+            "is_active": True
+        })
+        sim_state["custom_rules"] = sim_rules
+
+    reasoner_res = cognitive.omega.reasoner.decide(sim_state)
+    return {
+        "simulated_state": sim_state,
+        "recommendation": reasoner_res.recommendation,
+        "confidence": reasoner_res.confidence,
+        "reason": reasoner_res.reason,
+        "rules": reasoner_res.rules,
+        "steps": reasoner_res.steps,
+        "source": reasoner_res.source,
+        "counterfactuals": reasoner_res.counterfactuals
+    }
+
+# --- Outcomes, Learning & Calibration ---
+
+@router.post("/decisions/{decision_id}/outcomes")
+def outcome(decision_id: str, payload: OutcomeCreate, db: Session = Depends(get_db)):
+    d = db.query(Decision).filter(Decision.id == decision_id).first()
+    if not d:
+        raise HTTPException(404, "Decision not found")
+    return cognitive.record_outcome(db, d, payload.model_dump())
+
+@router.get("/fields/{field_id}/learning")
+def learning(field_id: str, db: Session = Depends(get_db)):
+    return [
+        {
+            "id": x.id,
+            "type": x.type,
+            "pattern": x.pattern,
+            "observation": x.observation,
+            "old_value": x.old_value,
+            "new_value": x.new_value,
+            "status": x.status,
+            "created_at": x.created_at.isoformat()
+        }
+        for x in db.query(LearningEvent).filter(LearningEvent.field_id == field_id).order_by(LearningEvent.created_at.desc()).all()
+    ]
+
+@router.get("/sources/reliability")
+def source_reliability(db: Session = Depends(get_db)):
+    sources = db.query(SourceReliability).order_by(SourceReliability.score.desc()).all()
+    return [
+        {
+            "id": s.id,
+            "source_id": s.source_id,
+            "source_type": s.source_type,
+            "score": s.score,
+            "samples": s.samples,
+            "updated_at": s.updated_at.isoformat()
+        }
+        for s in sources
+    ]
+
+@router.get("/fields/{field_id}/timeline")
+def timeline(field_id: str, db: Session = Depends(get_db)):
+    ev = db.query(Evidence).filter(Evidence.field_id == field_id).all()
+    ds = db.query(Decision).filter(Decision.field_id == field_id).all()
+    out = db.query(Outcome).filter(Outcome.field_id == field_id).all()
+    rows = []
+    rows += [{"time": e.observed_at.isoformat(), "kind": "evidence", "title": e.predicate, "detail": e.value} for e in ev]
+    rows += [{"time": d.created_at.isoformat(), "kind": "decision", "title": d.recommendation, "detail": d.reason} for d in ds]
+    rows += [{"time": o.observed_at.isoformat(), "kind": "outcome", "title": o.type, "detail": o.observed_value} for o in out]
+    return sorted(rows, key=lambda x: x["time"])
