@@ -48,3 +48,19 @@
 ; Format: (soil-property $soil_type $retention_tier $critical_threshold_percent)
 (soil-property loam medium-retention 18)
 (soil-property sandy_loam low-retention 22)
+(soil-property clay high-retention 15)
+
+; --- 6. Evidence Types ---
+(evidence-type sensor-soil-moisture)
+(evidence-type weather-forecast)
+(evidence-type farmer-observation)
+(evidence-type ground-truth-rain-gauge)
+
+; --- 7. Cognitive Relations ---
+(relation supports)
+(relation contradicts)
+(relation supersedes)
+(relation compensates-for)
+
+; --- 8. Decision Classifiers ---
+(decision IRRIGATE)
