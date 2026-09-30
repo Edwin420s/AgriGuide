@@ -1609,3 +1609,53 @@ button:disabled {
   padding: 10px 16px;
 }
 
+/* Model Selector Bar */
+.model-selector-bar {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.model-selector-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.model-select-dropdown {
+  padding: 6px 12px;
+  border: 1px solid #c8d8ce;
+  border-radius: 6px;
+  background: #f7faf8;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #1a3826;
+  cursor: pointer;
+  outline: none;
+}
+
+.model-select-dropdown:focus {
+  border-color: #1e5a32;
+}
+
+.model-selector-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-best-for {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+

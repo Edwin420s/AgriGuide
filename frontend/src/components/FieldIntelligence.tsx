@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CloudRain,
+  Cpu,
   Database,
   Droplets,
   GitBranch,
@@ -16,7 +17,7 @@ import {
   Zap
 } from 'lucide-react';
 import { TabType } from './Sidebar';
-import { consultField, getLLMStatus } from '../lib/api';
+import { consultField, getLLMModels, getLLMStatus, switchLLMModel } from '../lib/api';
 
 interface FieldIntelligenceProps {
   field: any;
@@ -45,6 +46,9 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
 }) => {
   const [obsInput, setObsInput] = useState('');
   const [llmStatus, setLlmStatus] = useState<any>(null);
+  const [modelList, setModelList] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('minimax/minimax-m3');
+  const [switchingModel, setSwitchingModel] = useState<boolean>(false);
   const [consultQuery, setConsultQuery] = useState('');
   const [consulting, setConsulting] = useState(false);
   const [consultHistory, setConsultHistory] = useState<Array<{ role: 'farmer' | 'agent'; text: string; grounded?: boolean; model?: string }>>([
@@ -56,8 +60,29 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
   ]);
 
   useEffect(() => {
-    getLLMStatus().then(setLlmStatus).catch(() => {});
+    getLLMStatus().then((st) => {
+      setLlmStatus(st);
+      if (st?.model) setSelectedModel(st.model);
+    }).catch(() => {});
+
+    getLLMModels().then((data) => {
+      if (data?.models) setModelList(data.models);
+      if (data?.active_model) setSelectedModel(data.active_model);
+    }).catch(() => {});
   }, []);
+
+  const handleModelChange = async (newModel: string) => {
+    setSelectedModel(newModel);
+    setSwitchingModel(true);
+    try {
+      const updated = await switchLLMModel(newModel);
+      setLlmStatus(updated);
+    } catch (e) {
+      console.error('Failed to switch model:', e);
+    } finally {
+      setSwitchingModel(false);
+    }
+  };
 
   const handleConsult = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +92,7 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
     setConsultHistory((prev) => [...prev, { role: 'farmer', text: q }]);
     setConsulting(true);
     try {
-      const res = await consultField(field.id, q);
+      const res = await consultField(field.id, q, selectedModel);
       setConsultHistory((prev) => [
         ...prev,
         { role: 'agent', text: res.answer, grounded: res.grounded, model: res.model }
@@ -83,7 +108,6 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
   };
 
   const currentDecision = decisions[0];
-
 
   const handleSendObs = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +130,50 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
     }
   };
 
+  const activeModelMeta = modelList.find((m) => m.id === selectedModel);
+
   return (
     <div className="tab-container">
+      {/* Dynamic Model Selector Bar */}
+      <div className="model-selector-bar">
+        <div className="model-selector-left">
+          <Cpu size={16} style={{ color: '#1e5a32' }} />
+          <span><strong>ASI Cloud Neural Engine:</strong></span>
+          <select
+            value={selectedModel}
+            onChange={(e) => handleModelChange(e.target.value)}
+            disabled={switchingModel}
+            className="model-select-dropdown"
+          >
+            {modelList.length > 0 ? (
+              modelList.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} — {m.tag}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="minimax/minimax-m3">MiniMax M3 (Recommended · Agentic Workflows)</option>
+                <option value="asi1-mini">ASI-1 Mini (SingularityNET Native)</option>
+                <option value="google/gemma-3-27b-it">Google Gemma 3 27B IT (Google High Precision)</option>
+                <option value="meta-llama/llama-3.3-70b-instruct">Meta LLaMA 3.3 70B Instruct (Deep Logic)</option>
+                <option value="qwen/qwen3-32b">Qwen 3 32B (Multilingual Dialogue)</option>
+              </>
+            )}
+          </select>
+        </div>
+        <div className="model-selector-right">
+          <span className="pill pill-mode">
+            {llmStatus?.api_configured ? 'API Connected' : 'Local Fallback'}
+          </span>
+          {activeModelMeta && (
+            <small className="model-best-for">
+              {activeModelMeta.best_for} · {activeModelMeta.context_window}
+            </small>
+          )}
+        </div>
+      </div>
+
       {/* Top Banner if multi-source conflicts detected */}
       {state?.has_conflicts && (
         <div className="alert-card warning">

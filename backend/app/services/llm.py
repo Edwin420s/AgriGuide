@@ -30,6 +30,49 @@ class LLMService:
       - qwen/qwen3-32b
     """
 
+    SUPPORTED_MODELS = [
+        {
+            "id": "minimax/minimax-m3",
+            "name": "MiniMax M3",
+            "tag": "Recommended Default",
+            "description": "Optimized for long-horizon agentic workflows, multi-step tool use, and complex symbolic reasoning.",
+            "context_window": "128k tokens",
+            "best_for": "Agentic Reasoning & Cognitive Trace Explanation"
+        },
+        {
+            "id": "asi1-mini",
+            "name": "ASI-1 Mini",
+            "tag": "SingularityNET Native",
+            "description": "Specialized SingularityNET low-latency neural model with fast token turnaround.",
+            "context_window": "32k tokens",
+            "best_for": "Rapid Observation Parsing & Edge Ingestion"
+        },
+        {
+            "id": "google/gemma-3-27b-it",
+            "name": "Google Gemma 3 27B IT",
+            "tag": "Google High Precision",
+            "description": "Google's instruction-tuned model with exceptional structured output and extraction adherence.",
+            "context_window": "32k tokens",
+            "best_for": "Structured Predicate Extraction & Schema Grounding"
+        },
+        {
+            "id": "meta-llama/llama-3.3-70b-instruct",
+            "name": "Meta LLaMA 3.3 70B Instruct",
+            "tag": "Deep Audit & Rationale",
+            "description": "Heavyweight instruction model capable of nuanced logical counterfactual explanations.",
+            "context_window": "128k tokens",
+            "best_for": "Counterfactual Trade-off Synthesis & Audit Proofs"
+        },
+        {
+            "id": "qwen/qwen3-32b",
+            "name": "Qwen 3 32B",
+            "tag": "Multilingual Specialist",
+            "description": "Strong multilingual capability (English, Swahili, and regional dialects) for conversational farmer engagement.",
+            "context_window": "64k tokens",
+            "best_for": "Farmer Consultation & Localized Dialogue"
+        }
+    ]
+
     def __init__(
         self,
         api_key: str | None = None,
@@ -53,6 +96,18 @@ class LLMService:
         """True if an actual API key is present."""
         return bool(self.api_key and self.api_key != "your_basix_hackathon_api_key_here")
 
+    def set_model(self, model_id: str) -> dict:
+        """Change the active model dynamically across the agent."""
+        valid_ids = [m["id"] for m in self.SUPPORTED_MODELS]
+        if model_id not in valid_ids:
+            raise ValueError(f"Model '{model_id}' is not in supported list: {valid_ids}")
+        self.model = model_id
+        return self.check_status()
+
+    def get_models(self) -> list[dict]:
+        """Return all supported ASI Cloud models with capability metadata."""
+        return self.SUPPORTED_MODELS
+
     def check_status(self) -> dict:
         """Diagnostics and health information for API and UI status indicators."""
         return {
@@ -61,27 +116,29 @@ class LLMService:
             "base_url": self.base_url,
             "model": self.model,
             "status": "online" if self.is_configured else "local_mock_fallback",
-            "available_models": [
-                "minimax/minimax-m3",
-                "asi1-mini",
-                "google/gemma-3-27b-it",
-                "meta-llama/llama-3.3-70b-instruct",
-                "qwen/qwen3-32b"
-            ]
+            "available_models": [m["id"] for m in self.SUPPORTED_MODELS],
+            "models_metadata": self.SUPPORTED_MODELS
         }
 
-    def _call_chat_completion(self, messages: list[dict], temperature: float = 0.2, max_tokens: int = 350) -> str | None:
+    def _call_chat_completion(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 350
+    ) -> str | None:
         """Execute an OpenAI-compatible chat completion request against ASI Cloud."""
         if not self.is_configured:
             return None
 
+        target_model = model or self.model
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         payload = {
-            "model": self.model,
+            "model": target_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens
@@ -96,17 +153,13 @@ class LLMService:
                     if choices:
                         return choices[0].get("message", {}).get("content", "")
                 else:
-                    logger.warning("ASI Cloud API returned status %s: %s", resp.status_code, resp.text[:200])
+                    logger.warning("ASI Cloud API (%s) returned status %s: %s", target_model, resp.status_code, resp.text[:200])
         except Exception as e:
-            logger.warning("ASI Cloud request error: %s. Falling back to local deterministic model.", e)
+            logger.warning("ASI Cloud request error for %s: %s. Falling back to local deterministic model.", target_model, e)
         return None
 
-    def extract_observation(self, message: str) -> ParsedObservation:
-        """Perception Layer: extracts structured MeTTa predicates from farmer text/speech notes.
-
-        Uses SingularityNET / ASI Cloud LLM when configured, with a deterministic
-        symbolic heuristic fallback for offline or unconfigured environments.
-        """
+    def extract_observation(self, message: str, model: str | None = None) -> ParsedObservation:
+        """Perception Layer: extracts structured MeTTa predicates from farmer text/speech notes."""
         if self.is_configured:
             system_prompt = (
                 "You are AgriGuide's Neural-Symbolic Perception Module.\n"
@@ -130,6 +183,7 @@ class LLMService:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": message}
                     ],
+                    model=model,
                     temperature=0.1,
                     max_tokens=200
                 )
@@ -143,7 +197,7 @@ class LLMService:
                     if not isinstance(val, dict):
                         val = {"value": val}
                     conf = float(data.get("confidence", 0.85))
-                    expl = str(data.get("explanation", "Extracted via SingularityNET / ASI Cloud LLM."))
+                    expl = str(data.get("explanation", f"Extracted via SingularityNET / ASI Cloud LLM ({model or self.model})."))
                     return ParsedObservation(
                         predicate=pred,
                         value=val,
@@ -216,7 +270,8 @@ class LLMService:
         crop: str = "Maize",
         soil_moisture: float | None = None,
         rain_prob: float | None = None,
-        water_avail: str | None = None
+        water_avail: str | None = None,
+        model: str | None = None
     ) -> str:
         """Synthesize a clear, natural language explanation grounded in MeTTa proof.
 
@@ -224,6 +279,7 @@ class LLMService:
         honoring the core neuro-symbolic hackathon principle: MeTTa handles the reasoning;
         the ASI Cloud LLM makes it human-auditable.
         """
+        target_model = model or self.model
         if self.is_configured:
             prompt_context = {
                 "recommendation": recommendation,
@@ -254,6 +310,7 @@ class LLMService:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"Formal MeTTa Decision Context:\n{json.dumps(prompt_context, indent=2)}"}
                     ],
+                    model=target_model,
                     temperature=0.3,
                     max_tokens=220
                 )
@@ -282,11 +339,12 @@ class LLMService:
 
         return f"AgriGuide advises {recommendation.replace('_', ' ').lower()} ({round(confidence*100)}% confidence). {reason}{cf_part}{supersede_part}"
 
-    def consult(self, query: str, context: dict) -> dict:
+    def consult(self, query: str, context: dict, model: str | None = None) -> dict:
         """Grounded conversational consultation with the farmer.
 
         Answers farmer queries strictly bounded by the MeTTa Atomspace state.
         """
+        target_model = model or self.model
         crop = context.get("crop", "Maize")
         moisture = context.get("soil_moisture", 18.0)
         rain_prob = context.get("rain_probability_24h", 75.0)
@@ -313,6 +371,7 @@ class LLMService:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": query}
                     ],
+                    model=target_model,
                     temperature=0.2,
                     max_tokens=250
                 )
@@ -322,10 +381,10 @@ class LLMService:
                         "answer": ans.strip(),
                         "grounded": True,
                         "provider": "asi_cloud",
-                        "model": self.model
+                        "model": target_model
                     }
             except Exception as e:
-                logger.warning("Failed consult via ASI Cloud: %s. Using grounded local fallback.", e)
+                logger.warning("Failed consult via ASI Cloud (%s): %s. Using grounded local fallback.", target_model, e)
 
         # Deterministic grounded consult answer
         return {

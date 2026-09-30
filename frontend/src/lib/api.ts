@@ -70,9 +70,16 @@ export const getTimeline = (id: string) => api<any[]>(`/fields/${id}/timeline`);
 
 // SingularityNET / ASI Cloud Neural-Symbolic Language Layer
 export const getLLMStatus = () => api<any>('/llm/status');
-export const consultField = (fieldId: string, query: string) =>
+export const getLLMModels = () => api<{ active_model: string; models: any[]; api_configured: boolean }>('/llm/models');
+export const switchLLMModel = (model: string) =>
+  api<any>('/llm/model', {
+    method: 'POST',
+    body: JSON.stringify({ model })
+  });
+export const consultField = (fieldId: string, query: string, model?: string) =>
   api<any>(`/fields/${fieldId}/consult`, {
     method: 'POST',
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query, model })
   });
+
 

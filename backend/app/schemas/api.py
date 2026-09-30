@@ -81,12 +81,29 @@ class DecisionDiffResponse(BaseModel):
 
 class FarmerConsultRequest(BaseModel):
     query: str
+    model: str | None = None
 
 class FarmerConsultResponse(BaseModel):
     answer: str
     grounded: bool
     provider: str
     model: str
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    tag: str
+    description: str
+    context_window: str
+    best_for: str
+
+class SwitchModelRequest(BaseModel):
+    model: str
+
+class ModelsListResponse(BaseModel):
+    active_model: str
+    models: list[ModelInfo]
+    api_configured: bool
 
 class LLMStatusResponse(BaseModel):
     provider: str
@@ -95,5 +112,7 @@ class LLMStatusResponse(BaseModel):
     model: str
     status: str
     available_models: list[str]
+    models_metadata: list[ModelInfo] = []
+
 
 

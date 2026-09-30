@@ -9,7 +9,8 @@ from app.models.domain import (
 from app.schemas.api import (
     EvidenceCreate, FarmerObservation, DecisionRequest, OutcomeCreate,
     FieldRuleCreate, WhatIfSimulateRequest, FarmerConsultRequest,
-    FarmerConsultResponse, LLMStatusResponse
+    FarmerConsultResponse, LLMStatusResponse, SwitchModelRequest,
+    ModelsListResponse
 )
 from app.services.cognitive import CognitiveService
 from app.services.llm import LLMService
@@ -31,6 +32,22 @@ def health():
 @router.get("/llm/status", response_model=LLMStatusResponse)
 def get_llm_status():
     return llm.check_status()
+
+@router.get("/llm/models", response_model=ModelsListResponse)
+def get_llm_models():
+    return {
+        "active_model": llm.model,
+        "models": llm.get_models(),
+        "api_configured": llm.is_configured
+    }
+
+@router.post("/llm/model", response_model=LLMStatusResponse)
+def switch_llm_model(payload: SwitchModelRequest):
+    try:
+        return llm.set_model(payload.model)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 @router.get("/dashboard")
@@ -396,7 +413,7 @@ def consult_field(field_id: str, payload: FarmerConsultRequest, db: Session = De
         "latest_decision": latest_d.recommendation if latest_d else "PENDING_EVALUATION",
         "latest_reason": latest_d.reason if latest_d else "Awaiting initial MeTTa inference."
     }
-    return llm.consult(payload.query, context)
+    return llm.consult(payload.query, context, model=payload.model)
 
 
 # --- Interactive What-If Simulation ---

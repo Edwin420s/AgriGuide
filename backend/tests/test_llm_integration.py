@@ -152,3 +152,44 @@ def test_api_routes_llm_endpoints():
         cleanup_db.commit()
         cleanup_db.close()
 
+def test_supported_models_list_and_switching():
+    service = LLMService()
+    models = service.get_models()
+    assert len(models) == 5
+    model_ids = [m["id"] for m in models]
+    assert "minimax/minimax-m3" in model_ids
+    assert "asi1-mini" in model_ids
+    assert "google/gemma-3-27b-it" in model_ids
+    assert "meta-llama/llama-3.3-70b-instruct" in model_ids
+    assert "qwen/qwen3-32b" in model_ids
+
+    # Switch to asi1-mini
+    res = service.set_model("asi1-mini")
+    assert service.model == "asi1-mini"
+    assert res["model"] == "asi1-mini"
+
+    # Switch to llama 3.3
+    service.set_model("meta-llama/llama-3.3-70b-instruct")
+    assert service.model == "meta-llama/llama-3.3-70b-instruct"
+
+    # Invalid model throws ValueError
+    with pytest.raises(ValueError):
+        service.set_model("nonexistent/invalid-model")
+
+def test_api_routes_model_switcher():
+    # Test GET /api/llm/models
+    res = client.get("/api/llm/models")
+    assert res.status_code == 200
+    data = res.json()
+    assert "active_model" in data
+    assert len(data["models"]) == 5
+
+    # Test POST /api/llm/model
+    switch_res = client.post("/api/llm/model", json={"model": "google/gemma-3-27b-it"})
+    assert switch_res.status_code == 200
+    assert switch_res.json()["model"] == "google/gemma-3-27b-it"
+
+    # Switch back to minimax
+    client.post("/api/llm/model", json={"model": "minimax/minimax-m3"})
+
+
