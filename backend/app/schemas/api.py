@@ -28,3 +28,33 @@ class OutcomeCreate(BaseModel):
     type: str
     observed_value: dict
     confidence: float = Field(0.8, ge=0, le=1)
+    observed_at: datetime
+
+class DecisionResponse(BaseModel):
+    decision_id: str
+    recommendation: str
+    confidence: float
+    reason: str
+    state_version: int
+    audit_available: bool
+
+class FieldRuleCreate(BaseModel):
+    name: str
+    description: str
+    condition: dict
+    action: str
+    metta_expr: str | None = None
+    priority: int = 10
+    is_active: bool = True
+
+class FieldRuleResponse(BaseModel):
+    id: str
+    field_id: str
+    name: str
+    description: str
+    condition: dict
+    action: str
+    metta_expr: str | None = None
+    priority: int
+    is_active: bool
+    created_at: datetime
