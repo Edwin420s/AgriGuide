@@ -346,7 +346,15 @@ class MettaService:
                 source="metta-fallback"
             )
 
-        # 2. Try native MeTTa binary if available on system
+        # 2. Try native Hyperon Python package if available (as taught in mettatraining)
+        try:
+            res = self._run_hyperon_metta(soil, rain, water, current_rain, custom_rules)
+            if res:
+                return res
+        except Exception:
+            pass
+
+        # 3. Try native MeTTa binary if available on system
         if self.native_binary and self.rules_path.is_file():
             try:
                 res = self._run_native_metta(soil, rain, water, current_rain)
@@ -355,8 +363,63 @@ class MettaService:
             except Exception:
                 pass
 
-        # 3. Embedded Symbolic MeTTa Engine
+        # 4. Embedded Symbolic MeTTa Engine (Faithful interpreter with 0 external dependencies)
         return self._run_embedded_metta(soil, rain, water, current_rain, crop_demand, custom_rules)
+
+    def _run_hyperon_metta(
+        self,
+        soil: float,
+        rain: float,
+        water: str,
+        current_rain: bool,
+        custom_rules: list[dict] | None = None
+    ) -> MettaExecutionResult | None:
+        """Executes reasoning directly via Hyperon Python bindings (mettatraining lesson 22-23)."""
+        try:
+            import hyperon
+            runner = hyperon.MeTTa()
+            if self.rules_path.is_file():
+                runner.run(self.rules_path.read_text())
+            if self.knowledge_path.is_file():
+                runner.run(self.knowledge_path.read_text())
+
+            # Inject custom rules dynamically via add-atom
+            if custom_rules:
+                for rule in custom_rules:
+                    if not rule.get("is_active", True):
+                        continue
+                    cond = rule.get("condition", {})
+                    action = rule.get("action", "WAIT")
+                    if "rain_threshold_min" in cond:
+                        thresh = cond["rain_threshold_min"]
+                        runner.run(f"!(add-atom &self (= (custom-rain-check $soil $rain) (if (>= $rain {thresh}) {action} CONTINUED)))")
+
+            c_rain_str = "true" if current_rain else "false"
+            query_code = f"!(irrigation-decision {soil} {rain} {water.lower()} {c_rain_str})"
+            results = runner.run(query_code)
+            raw = str(results)
+            rec = "REASSESS"
+            if "IRRIGATE" in raw:
+                rec = "IRRIGATE"
+            elif "WAIT" in raw:
+                rec = "WAIT"
+
+            rule_id = self._map_rule_id(rec)
+            cf = self.evaluate_counterfactuals(soil, rain, water)
+            return MettaExecutionResult(
+                recommendation=rec,
+                confidence=0.92,
+                reason=self._format_reason(rec, soil, rain, water, current_rain),
+                rules=[rule_id],
+                steps=[
+                    {"type": "HYPERON_METTA", "input": query_code, "output": raw}
+                ],
+                source="hyperon-python",
+                counterfactuals=cf,
+                raw_output=raw
+            )
+        except Exception:
+            return None
 
     def _run_native_metta(
         self,

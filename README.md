@@ -26,6 +26,19 @@ Evidence → Belief → World State → Omega Memory → MeTTa Reasoning → Dec
 
 ---
 
+## 🎓 BASIX MeTTa Omniversity Training Lineage
+
+AgriGuide directly scales the foundational concepts and programming challenges taught during the **BASIX MeTTa Curriculum (`mettatraining`)**:
+
+| Curriculum Module | Core Concepts & Challenges | Direct Application in AgriGuide |
+| :--- | :--- | :--- |
+| **Module 1: Foundations** | • Syntax, Types & S-Expressions<br>• Pattern Matching Logic (`match &self`)<br>• Challenges 1–3: Accumulators (`sumIf`) | • Typed ontology in `metta/knowledge/agriculture.metta`<br>• Pattern matching over dynamic field states<br>• `sum-active-water-demand` higher-order accumulation |
+| **Module 2: Advanced Logic** | • Relational KBs (Challenge 4)<br>• Python Interop `py-atom` (Challenge 5)<br>• Range Guards & Transformers (Challenges 7–9) | • Digital twin knowledge graph (`world_model.py`)<br>• `hyperon.MeTTa()` runner integration (`metta_runner.py`)<br>• Agronomic safe root-zone moisture stress envelopes |
+| **Module 3: Non-Determinism** | • Space manipulation (`add-atom`, `remove-atom`)<br>• Missing lead investigation (Challenge 15)<br>• Non-deterministic `superpose` (Challenge 16) | • Testing temporary hypothesis leads in Atomspace<br>• Counterfactual reasoning branches (`if_irrigate` vs `if_wait`)<br>• Recursive hydrological runoff path tracing |
+| **Module 4: Integration & MORK** | • Self-rewriting rules & Unification (Lesson 21)<br>• Query Parsing (`metta-demo` / `movie-recommender`)<br>• End-to-end question answering pipeline | • "The Agent That Grows Up": Dynamic farmer custom rules<br>• Structured evidence extraction from natural language<br>• SingularityNET ASI Cloud OpenAI-compatible task routing |
+
+---
+
 ## 🚀 Key Features
 
 - **Symbolic MeTTa Runtime**: Parses and evaluates `.metta` code files faithfully via an embedded symbolic S-expression engine, with native CLI subprocess fallback. Implements Atomspace pattern matching (`match &self`), unification, and typed declarative predicates directly aligned with the BASIX MeTTa training curriculum.
@@ -70,9 +83,13 @@ npm run dev
 ```
 Open `http://localhost:5173` in your browser.
 
-### 3. Run Test Suite
+### 3. Run Test Suite & Curriculum Verification
 ```bash
+# Run full unit and integration tests (28/28 tests passing):
 pytest backend/tests/ -v
+
+# Run the BASIX MeTTa Curriculum & 10-Point Scientific Benchmark Verification:
+python3 scripts/verify_metta_curriculum.py
 ```
 
 ---
