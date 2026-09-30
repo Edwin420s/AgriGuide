@@ -58,3 +58,88 @@ class CognitiveService:
                 db.add(b)
         db.flush()
 
+    def decide(self, db: Session, field: Field, trigger: str, goal: str):
+        self.update_beliefs(db, field.id)
+        state = self.world.build(db, field)
+
+        run_count = db.query(CognitiveRun).filter(CognitiveRun.field_id == field.id).count()
+        run = CognitiveRun(
+            field_id=field.id,
+            trigger=trigger,
+            goal=goal,
+            status="REASONING",
+            world_state_version=run_count + 1
+        )
+        db.add(run)
+        db.flush()
+
+        previous = (
+            db.query(Decision)
+            .filter(Decision.field_id == field.id)
+            .order_by(Decision.created_at.desc())
+            .first()
+        )
+        memory = []
+        if previous:
+            memory.append({
+                "decision": previous.recommendation,
+                "confidence": previous.confidence,
+                "reason": previous.reason,
+                "created_at": previous.created_at.isoformat()
+            })
+
+        result = self.omega.run(goal, state, memory)
+
+        supersedes_id = None
+        if previous and previous.recommendation != result.reasoning.recommendation:
+            supersedes_id = previous.id
+
+        decision = Decision(
+            field_id=field.id,
+            cognitive_run_id=run.id,
+            recommendation=result.reasoning.recommendation,
+            confidence=result.reasoning.confidence,
+            reason=result.reasoning.reason,
+            supersedes_id=supersedes_id
+        )
+        db.add(decision)
+        db.flush()
+
+        for i, step in enumerate(result.reasoning.steps, 1):
+            db.add(DecisionReasoning(
+                decision_id=decision.id,
+                sequence_number=i,
+                step_type=step.get("type", "INFERENCE"),
+                input_data=step.get("input", {}),
+                rule_id=step.get("rule_id"),
+                output_data=step.get("output", {}),
+                confidence=step.get("confidence", result.reasoning.confidence)
+            ))
+
+        run.status = "COMPLETED"
+        run.completed_at = datetime.utcnow()
+
+        self.audit(
+            db, "decision", decision.id, "DECISION_CREATED",
+            {
+                "recommendation": decision.recommendation,
+                "confidence": decision.confidence,
+                "rules": result.reasoning.rules,
+                "omega_mode": result.mode,
+                "source": result.reasoning.source
+            }
+        )
+
+        if decision.supersedes_id:
+            self.audit(
+                db, "decision", decision.id, "DECISION_REVISED",
+                {
+                    "supersedes": decision.supersedes_id,
+                    "previous_recommendation": previous.recommendation if previous else None,
+                    "new_recommendation": decision.recommendation,
+                    "trigger": trigger
+                }
+            )
+
+        db.commit()
+        db.refresh(decision)
