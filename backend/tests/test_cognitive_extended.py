@@ -128,3 +128,40 @@ def test_outcome_recording_and_calibration():
         db.close()
 
 def test_omega_stateful_agent_cycle():
+    from app.services.omega import OmegaAgent
+    agent = OmegaAgent()
+    assert agent.skill_contract == "omega/skills/agriguide.metta"
+
+    # Episode 1: Dry state
+    state_1 = {
+        "soil_moisture": 16.5,
+        "rain_probability_24h": 18.0,
+        "water_availability": "LIMITED",
+        "current_rainfall": False,
+        "crop_water_demand": "HIGH"
+    }
+    res_1 = agent.run("irrigation_decision", state_1, [])
+    assert res_1.reasoning.recommendation == "IRRIGATE"
+    assert res_1.mode == "omega-native-metta"
+    assert res_1.reasoning.source == "omega-native-metta"
+    assert len(res_1.memory) == 1
+    assert any(s.get("type") == "OMEGA_AGENT_INIT" for s in res_1.reasoning.steps)
+
+    # Episode 2: High rain telemetry arrives
+    state_2 = {
+        "soil_moisture": 16.5,
+        "rain_probability_24h": 82.0,
+        "water_availability": "LIMITED",
+        "current_rainfall": False,
+        "crop_water_demand": "HIGH"
+    }
+    res_2 = agent.run("reassess_irrigation", state_2, res_1.memory)
+    assert res_2.reasoning.recommendation == "WAIT"
+    assert len(res_2.memory) == 2
+    # Verify Omega memory reconciliation step was emitted
+    reconciliation_steps = [s for s in res_2.reasoning.steps if s.get("type") == "OMEGA_MEMORY_RECONCILIATION"]
+    assert len(reconciliation_steps) == 1
+    assert reconciliation_steps[0]["input"]["prior_recommendation"] == "IRRIGATE"
+    assert reconciliation_steps[0]["rule_id"] == "OMEGA-REVISE-PRIOR-DECISION"
+
+
