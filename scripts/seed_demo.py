@@ -34,9 +34,9 @@ def seed():
 
     # 1. User & Farm
     farmer = User(
-        name="Edwin (Nexora AI)",
-        email="edwin@agriguide.local",
-        role="FARMER",
+        name="Edwin",
+        email="eduedywn5@gmail.com",
+        role="ADMIN",
         language="en"
     )
     db.add(farmer)

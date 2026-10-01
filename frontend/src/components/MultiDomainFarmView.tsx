@@ -20,9 +20,10 @@ import { getHolisticStatus, proposeAction } from '../lib/api';
 interface MultiDomainFarmProps {
   field: any;
   state: any;
+  decision?: any;
 }
 
-export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, state }) => {
+export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, state, decision }) => {
   const [holistic, setHolistic] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -79,78 +80,82 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
     }
   };
 
+  const getDomain = (key: string, fallback: any) => {
+    return holistic?.domains?.[key] || holistic?.[key] || fallback;
+  };
+
   const domainCards = [
     {
       key: 'irrigation',
       title: 'Irrigation Management',
       icon: <Droplets size={22} style={{ color: '#2563eb' }} />,
       color: '#2563eb',
-      data: holistic?.irrigation || {
-        recommendation: state?.recommendation || 'DELAY_IRRIGATION',
-        confidence: state?.confidence || 0.88,
-        reason: 'Soil moisture is dry, but 75% rain is forecasted within 24 hours. Wait for precipitation.',
-        rules: ['R-RAIN-SUPERSEDES-IRRIGATION', 'R-WATER-CONSERVATION']
-      }
+      data: getDomain('irrigation', {
+        recommendation: decision?.recommendation || state?.recommendation || 'WAIT',
+        confidence: decision?.confidence || state?.confidence || 0.88,
+        reason: decision?.reason || 'Advisory synchronized with active field root zone telemetry and weather forecast.',
+        rules: decision?.rules || ['R-CANONICAL-DECISION']
+      })
     },
     {
       key: 'planting',
       title: 'Planting Window',
       icon: <Sprout size={22} style={{ color: '#16a34a' }} />,
       color: '#16a34a',
-      data: holistic?.planting || {
+      data: getDomain('planting', {
         recommendation: 'MONITOR',
         confidence: 0.72,
         reason: 'Current seedbed moisture is marginal; assess upcoming 48h moisture infiltration.',
         rules: ['R-MARGINAL-PLANTING-CONDITIONS']
-      }
+      })
     },
     {
       key: 'fertilization',
       title: 'Nutrient & Leaching Protection',
       icon: <FlaskConical size={22} style={{ color: '#7c3aed' }} />,
       color: '#7c3aed',
-      data: holistic?.fertilization || {
+      data: getDomain('fertilization', {
         recommendation: 'DELAY_APPLICATION',
         confidence: 0.91,
         reason: 'Heavy convective precipitation (>10mm) forecasted; nitrogen leaching risk exceeds safe threshold.',
         rules: ['R-LEACHING-PROTECTION-HIGH-RAIN']
-      }
+      })
     },
     {
       key: 'crop_health',
       title: 'Crop Vigor & Stress',
       icon: <HeartPulse size={22} style={{ color: '#059669' }} />,
       color: '#059669',
-      data: holistic?.crop_health || {
+      data: getDomain('crop_health', {
         recommendation: 'HEALTHY',
         confidence: 0.88,
         reason: 'Vegetative canopy healthy; no acute wilting or heat stress detected.',
         rules: ['R-CROP-VIGOR-GOOD']
-      }
+      })
     },
     {
       key: 'weather_risk',
       title: 'Microclimate & Weather Risk',
       icon: <CloudLightning size={22} style={{ color: '#d97706' }} />,
       color: '#d97706',
-      data: holistic?.weather_risk || {
+      data: getDomain('weather_risk', {
         recommendation: 'LOW_RISK',
         confidence: 0.85,
         reason: 'No gale force winds or catastrophic hail detected in ensemble models.',
         rules: ['R-WEATHER-NOMINAL']
-      }
+      })
     },
     {
       key: 'harvest',
       title: 'Harvest Readiness',
       icon: <Wheat size={22} style={{ color: '#ca8a04' }} />,
       color: '#ca8a04',
-      data: holistic?.harvest || {
+      data: getDomain('harvest', {
         recommendation: 'DELAY_HARVEST',
         confidence: 0.95,
         reason: 'Crop in vegetative growth stage; maturity expected in 45-60 days.',
         rules: ['R-PHYSIOLOGICAL-IMMATURE']
-      }
+      })
     }
   ];
 
@@ -159,12 +164,12 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
       {/* Header Banner */}
       <div className="card-head" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <span className="pill">CROSS-DOMAIN COGNITIVE SYNTHESIS</span>
+          <span className="pill">FARM OPERATIONS</span>
           <h2 style={{ fontSize: '1.4rem', marginTop: '4px' }}>
-            Multi-Domain Agricultural Decision Suite
+            Comprehensive Farm Operations Suite
           </h2>
           <p className="field-subtitle">
-            Simultaneous reasoning across Irrigation, Planting, Fertilization, Crop Health, Weather Hazards, and Harvest Readiness
+            Coordinated field guidance across Irrigation, Planting, Fertilization, Crop Health, Weather Risks, and Harvest Readiness
           </p>
         </div>
         <button className="secondary" onClick={fetchHolisticData} disabled={loading}>
@@ -230,7 +235,7 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
 
             <div style={{ marginTop: '12px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
               <small style={{ color: '#6b7280', fontSize: '11px', display: 'block' }}>
-                <strong>MeTTa Rules:</strong> {domain.data?.rules?.join(', ') || 'R-DOMAIN-GROUNDED'}
+                <strong>Governing Rules:</strong> {domain.data?.rules?.join(', ') || 'R-DOMAIN-GROUNDED'}
               </small>
             </div>
           </div>
@@ -241,11 +246,11 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
       <div className="audit-section-card">
         <div className="card-head">
           <div>
-            <span className="pill pill-mode">DETERMINISTIC SAFETY GUARDRAILS</span>
-            <h3>Physical Actuation Proposer & Safety Policy Enforcer</h3>
+            <span className="pill pill-mode">SAFETY POLICY</span>
+            <h3>Field Action Proposer & Equipment Safety Guardrails</h3>
             <small style={{ color: '#555' }}>
-              Propose field interventions (e.g. 45 min irrigation valve actuation) and test the deterministic safety policy engine.
-              Safety rules enforce non-overridable ceilings (e.g., maximum 30 min duration clamp, wind lockouts, reservoir depletion lockout).
+              Propose field operations (such as opening irrigation valves or applying fertilizer) and test safety limits.
+              Automatic guardrails enforce safety boundaries (such as a maximum 30-minute valve limit, high-wind spray lockouts, and empty reservoir protection).
             </small>
           </div>
           <ShieldCheck size={24} style={{ color: '#16a34a' }} />

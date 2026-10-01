@@ -6,6 +6,30 @@ interface DecisionDiffViewerProps {
   decisions: any[];
 }
 
+const humanizeRule = (rule: string) => {
+  if (!rule) return '';
+  const map: Record<string, string> = {
+    'R-LOW-MOISTURE-LOW-RAIN': 'Moisture Deficit (Rain Unlikely)',
+    'R-HIGH-RAIN-WATER-CONSERVATION': 'Water Conservation (Rain Imminent)',
+    'R-WAIT-HIGH-RAIN': 'Rain Forecast Water Conservation',
+    'R-IRRIGATE-DEFICIT': 'Critical Moisture Deficit Trigger',
+    'R-DEFAULT-MONITOR': 'Continuous Field Monitoring',
+    'R-MEM-RECONCILE': 'Historical Memory Reconciler'
+  };
+  return map[rule] || rule.replace(/^R-/, '').replace(/-/g, ' ');
+};
+
+const formatEvidenceValue = (val: any) => {
+  if (val === null || val === undefined) return 'N/A';
+  if (typeof val === 'object') {
+    if (val.probability !== undefined) return `${val.probability}% rain probability`;
+    if (val.value !== undefined) return `${val.value}${val.unit ? ' ' + val.unit : ''}`;
+    if (val.text) return val.text;
+    return Object.entries(val).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  }
+  return String(val);
+};
+
 export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decisions }) => {
   const [diffData, setDiffData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -39,15 +63,15 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
     <div className="tab-container">
       <div className="tab-header">
         <div>
-          <span className="pill">STATE REASSESSMENT & ADAPTATION</span>
-          <h2>What Changed? (Decision Diff)</h2>
+          <span className="pill">ADVISORY UPDATES</span>
+          <h2>Decision History & Changes</h2>
           <p className="subtitle">
-            Transparently reveals how new sensory evidence caused the MeTTa agent to revise its recommendation.
+            See how new field conditions (such as sudden rainfall or new farmer observations) changed earlier advice.
           </p>
         </div>
       </div>
 
-      {loading && <div className="loading-box">Computing decision lineage diff...</div>}
+      {loading && <div className="loading-box">Comparing historical decision records...</div>}
 
       {error && !loading && (
         <div className="empty-card">
@@ -56,12 +80,11 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
       )}
 
       {!loading && !supersededDecision && (
-        <div className="empty-card">
-          <Scale size={32} />
-          <h3>No Decision Supersession Recorded Yet</h3>
-          <p>
-            When field conditions change (such as sudden rainfall or new farmer observations), running the agent
-            will record a revised decision superseding the previous one.
+        <div className="empty-card" style={{ padding: '3rem 1rem', textAlign: 'center', background: '#fcfdfc', borderRadius: '8px', border: '1px dashed #d1e2d7', marginTop: '1rem' }}>
+          <Scale size={36} color="#457053" style={{ margin: '0 auto 12px auto' }} />
+          <h3 style={{ color: '#1e5a32', margin: '0 0 8px 0' }}>No Decision Changes Recorded Yet</h3>
+          <p style={{ maxWidth: '540px', margin: '0 auto', color: '#566e60', fontSize: '14px', lineHeight: '1.5' }}>
+            When environmental conditions shift (for example, if you click <strong>"Simulate Rain Event (82%)"</strong> on the <strong>Field Advisor</strong> tab), the system updates its recommendation and displays a clear side-by-side comparison here.
           </p>
         </div>
       )}
@@ -75,7 +98,7 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
               <div className="diff-rec-tag irrigate">{diffData.previous_recommendation || 'IRRIGATE'}</div>
               <p className="diff-reason">{diffData.previous_reason || 'Initial recommendation'}</p>
               <div className="diff-meta">
-                <span>Decision ID: {diffData.superseded_id?.slice(0, 8)}...</span>
+                <span>Decision Ref: #{diffData.superseded_id?.slice(0, 8)}</span>
               </div>
             </div>
 
@@ -103,7 +126,7 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
               <div className="panel-header">
                 <div className="title-row">
                   <GitBranch size={18} />
-                  <h3>MeTTa Rules Shift</h3>
+                  <h3>Agronomic Rules Shift</h3>
                 </div>
               </div>
               <div className="rule-delta-body">
@@ -112,11 +135,11 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
                     <div key={idx} className="rule-shift-card">
                       <div className="rule-badge-group">
                         <span className="rule-badge old">
-                          Prior Rule: {rc.previous_rules?.join(', ') || 'R-LOW-MOISTURE-LOW-RAIN'}
+                          Prior Rule: {rc.previous_rules?.map(humanizeRule).join(', ') || 'Soil Moisture Deficit'}
                         </span>
                         <ChevronRight size={16} />
                         <span className="rule-badge new">
-                          Active Rule: {rc.new_rules?.join(', ') || 'R-HIGH-RAIN-WATER-CONSERVATION'}
+                          Active Rule: {rc.new_rules?.map(humanizeRule).join(', ') || 'Rain Buffer Conservation'}
                         </span>
                       </div>
                       <p className="rule-explanation">{rc.explanation}</p>
@@ -143,7 +166,7 @@ export const DecisionDiffViewer: React.FC<DecisionDiffViewerProps> = ({ decision
                       <b>{ev.predicate?.replaceAll('_', ' ').toUpperCase()}</b>
                       <small>Source: {ev.source}</small>
                     </div>
-                    <strong>{String(ev.value?.value ?? JSON.stringify(ev.value))}</strong>
+                    <strong>{formatEvidenceValue(ev.value)}</strong>
                   </div>
                 ))}
               </div>

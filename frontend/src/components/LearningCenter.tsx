@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Award, Check, CloudRain, Droplet, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
-import { learning, outcome, getSourceReliability } from '../lib/api';
+import { learning, outcome, getSourceReliability, decide } from '../lib/api';
 
 interface LearningCenterProps {
   fieldId: string;
@@ -42,13 +42,16 @@ export const LearningCenter: React.FC<LearningCenterProps> = ({
   }, [fieldId]);
 
   const handleRecordRainfall = async (mmValue: number) => {
-    if (!latestDecisionId) {
-      alert('Please run a cognitive decision on the field first before recording outcomes.');
-      return;
-    }
+    if (!fieldId) return;
     setSubmitting(true);
+    setNotice('');
     try {
-      await outcome(latestDecisionId, {
+      let targetId = latestDecisionId;
+      if (!targetId) {
+        const d = await decide(fieldId);
+        targetId = d.id;
+      }
+      await outcome(targetId, {
         type: 'ACTUAL_RAINFALL',
         observed_value: {
           millimeters: Number(mmValue),
@@ -59,11 +62,11 @@ export const LearningCenter: React.FC<LearningCenterProps> = ({
         observed_at: new Date().toISOString()
       });
       setNotice(`Recorded ${mmValue}mm rainfall! Closed loop updated & source reliability calibrated.`);
-      setTimeout(() => setNotice(''), 4000);
+      setTimeout(() => setNotice(''), 4500);
       await loadData();
       onOutcomeAdded();
     } catch (err: any) {
-      alert(err.message);
+      setNotice(`Failed to record outcome: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -73,11 +76,10 @@ export const LearningCenter: React.FC<LearningCenterProps> = ({
     <div className="tab-container">
       <div className="tab-header">
         <div>
-          <span className="pill pill-mode">CLOSED-LOOP VERIFICATION</span>
-          <h2>Learning & Source Calibration</h2>
+          <span className="pill pill-mode">ACCURACY VERIFICATION</span>
+          <h2>Sensor & Forecast Accuracy Calibration</h2>
           <p className="subtitle">
-            AgriGuide compares real-world ground truth (actual rain & soil moisture) against prior decisions,
-            dynamically calibrating weather and sensor reliability weights.
+            Record actual measured rainfall to compare against earlier forecasts. AgriGuide continuously tunes provider accuracy so future advice becomes increasingly dependable.
           </p>
         </div>
       </div>

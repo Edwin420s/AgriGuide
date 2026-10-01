@@ -2,6 +2,32 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Any
 
+class FarmCreate(BaseModel):
+    name: str
+    location_name: str
+    water_availability: str = "LIMITED"
+    area: float | None = 2.5
+    latitude: float | None = None
+    longitude: float | None = None
+
+class FieldCreate(BaseModel):
+    farm_id: str | None = None
+    name: str
+    crop: str = "maize"
+    growth_stage: str = "flowering"
+    soil_type: str = "loam"
+    irrigation_method: str = "drip"
+    area_ha: float | None = 1.0
+
+class LocationResolveResponse(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+    elevation: float | None = None
+    country: str = "Kenya"
+    source: str = "verified_hub"
+    preview_weather: dict | None = None
+
 class EvidenceCreate(BaseModel):
     type: str
     source_type: str
@@ -59,6 +85,14 @@ class FieldRuleResponse(BaseModel):
     priority: int
     is_active: bool
     created_at: datetime
+
+class FieldUpdate(BaseModel):
+    name: str | None = None
+    crop: str | None = None
+    growth_stage: str | None = None
+    soil_type: str | None = None
+    area_ha: float | None = None
+    water_availability: str | None = None
 
 class WhatIfSimulateRequest(BaseModel):
     soil_moisture: float | None = None
@@ -126,3 +160,42 @@ class AnomalyCheckRequest(BaseModel):
 
 class DomainEvaluateRequest(BaseModel):
     params: dict[str, Any] = {}
+
+class UserRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "FARMER"
+    language: str = "en"
+    farm_name: str | None = None
+    location_name: str | None = None
+    initial_crop: str | None = "maize"
+    water_availability: str = "LIMITED"
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    language: str = "en"
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+    farm_id: str | None = None
+    field_id: str | None = None
+
+class UserProfileUpdateRequest(BaseModel):
+    name: str | None = None
+    language: str | None = None
+
+class UserChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+

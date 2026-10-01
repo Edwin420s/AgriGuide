@@ -12,6 +12,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(40), default="FARMER")
     language: Mapped[str] = mapped_column(String(20), default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
@@ -180,4 +181,21 @@ class FieldRule(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     field: Mapped[Field] = relationship(back_populates="rules")
+
+class CropCatalog(Base):
+    __tablename__ = "crop_catalog"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    name_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    name_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    aliases: Mapped[list[str]] = mapped_column(JSON, default=list)
+    category: Mapped[str] = mapped_column(String(50), default="cereal")
+    default_kc_initial: Mapped[float] = mapped_column(Float, default=0.50)
+    default_kc_mid: Mapped[float] = mapped_column(Float, default=1.15)
+    default_kc_late: Mapped[float] = mapped_column(Float, default=0.60)
+    root_depth_m: Mapped[float] = mapped_column(Float, default=0.6)
+    water_demand_level: Mapped[str] = mapped_column(String(20), default="MEDIUM")
+    common_stages: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
 

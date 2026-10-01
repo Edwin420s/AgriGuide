@@ -37,17 +37,16 @@ export const ScientificBenchmarkView: React.FC = () => {
     <div className="tab-container">
       <div className="tab-header">
         <div>
-          <span className="pill pill-mode">SCIENTIFIC VERIFICATION LABORATORY</span>
-          <h2>Platform Benchmark & Task Routing</h2>
+          <span className="pill pill-mode">SYSTEM RELIABILITY</span>
+          <h2>Quality & Reliability Benchmark</h2>
           <p className="subtitle">
-            Automated 10-point scientific simulation suite verifying reasoning consistency,
-            conflict resolution, sensor anomaly detection, safety policies, and model routing.
+            Automated 10-point test suite validating decision correctness, conflict resolution, sensor anomaly detection, and equipment safety across diverse farm conditions.
           </p>
         </div>
 
         <button className="primary" onClick={handleRunBenchmark} disabled={running}>
           <Play size={16} />
-          <span>{running ? 'Executing Scenarios...' : 'Run 10-Point Benchmark'}</span>
+          <span>{running ? 'Running Quality Tests...' : 'Run Automated Benchmark'}</span>
         </button>
       </div>
 
@@ -67,7 +66,7 @@ export const ScientificBenchmarkView: React.FC = () => {
             <div>
               <h3>Execution Latency</h3>
               <p className="big-score">{scorecard.duration_ms} ms</p>
-              <small>Local deterministic MeTTa inference</small>
+              <small>Deterministic backend inference</small>
             </div>
           </div>
 
@@ -140,7 +139,7 @@ export const ScientificBenchmarkView: React.FC = () => {
 
         <p style={{ color: '#4a6b57', fontSize: '14px', marginBottom: '16px' }}>
           Workloads are automatically dispatched to the optimal model based on operational trade-offs,
-          while preserving MeTTa symbolic derivation as the immutable ground truth.
+          while preserving deterministic symbolic derivation as the immutable ground truth.
         </p>
 
         <div className="routes-grid">

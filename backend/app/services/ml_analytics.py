@@ -32,7 +32,28 @@ class AgriculturalMLService:
     KC_TABLE = {
         "maize": {"initial": 0.40, "vegetative": 0.80, "flowering": 1.20, "grain-fill": 1.15, "maturity": 0.60},
         "tomato": {"initial": 0.60, "vegetative": 0.85, "flowering": 1.15, "fruiting": 1.10, "maturity": 0.80},
+        "tomatoes": {"initial": 0.60, "vegetative": 0.85, "flowering": 1.15, "fruiting": 1.10, "maturity": 0.80},
         "bean": {"initial": 0.40, "vegetative": 0.70, "flowering": 1.10, "grain-fill": 0.90, "maturity": 0.35},
+        "beans": {"initial": 0.40, "vegetative": 0.70, "flowering": 1.10, "grain-fill": 0.90, "maturity": 0.35},
+        "french beans": {"initial": 0.45, "vegetative": 0.75, "flowering": 1.15, "pod-formation": 1.10, "maturity": 0.85},
+        "potato": {"initial": 0.50, "vegetative": 0.80, "flowering": 1.15, "tuber_initiation": 1.05, "tuber_bulking": 1.15, "maturity": 0.75},
+        "potatoes": {"initial": 0.50, "vegetative": 0.80, "flowering": 1.15, "tuber_initiation": 1.05, "tuber_bulking": 1.15, "maturity": 0.75},
+        "coffee": {"initial": 0.80, "vegetative": 0.90, "flowering": 1.05, "berry_expansion": 1.05, "ripening": 0.90},
+        "tea": {"initial": 0.90, "vegetative": 1.00, "flowering": 1.05, "active_plucking": 1.10, "dormant": 0.85},
+        "cabbage": {"initial": 0.50, "vegetative": 0.85, "head_formation": 1.10, "head_filling": 1.05, "maturity": 0.90},
+        "kale": {"initial": 0.50, "vegetative": 0.85, "flowering": 1.00, "continuous_harvest": 1.05, "maturity": 0.95},
+        "kales": {"initial": 0.50, "vegetative": 0.85, "flowering": 1.00, "continuous_harvest": 1.05, "maturity": 0.95},
+        "kales (sukuma wiki)": {"initial": 0.50, "vegetative": 0.85, "flowering": 1.00, "continuous_harvest": 1.05, "maturity": 0.95},
+        "sukuma wiki": {"initial": 0.50, "vegetative": 0.85, "flowering": 1.00, "continuous_harvest": 1.05, "maturity": 0.95},
+        "sorghum": {"initial": 0.35, "vegetative": 0.75, "booting": 1.00, "heading": 1.05, "grain_fill": 0.95, "maturity": 0.55},
+        "cassava": {"initial": 0.40, "vegetative": 0.80, "canopy_development": 0.95, "tuber_bulking": 1.05, "maturity": 0.60},
+        "avocado": {"initial": 0.60, "vegetative": 0.75, "flowering": 0.85, "fruit_development": 0.85, "maturity": 0.75},
+        "banana": {"initial": 0.70, "vegetative": 1.00, "shooting": 1.20, "bunch_development": 1.15, "maturity": 1.00},
+        "wheat": {"initial": 0.35, "vegetative": 0.75, "tillering": 0.85, "heading": 1.15, "ripening": 0.40},
+        "onion": {"initial": 0.50, "vegetative": 0.75, "bulb_initiation": 1.00, "bulb_development": 1.05, "curing": 0.75},
+        "onions": {"initial": 0.50, "vegetative": 0.75, "bulb_initiation": 1.00, "bulb_development": 1.05, "curing": 0.75},
+        "pepper": {"initial": 0.55, "vegetative": 0.80, "flowering": 1.05, "fruit_set": 1.05, "harvesting": 0.85},
+        "peppers": {"initial": 0.55, "vegetative": 0.80, "flowering": 1.05, "fruit_set": 1.05, "harvesting": 0.85}
     }
 
     def estimate_et0(self, temp_c: float, humidity_pct: float = 60.0, wind_kmh: float = 10.0) -> float:
@@ -45,21 +66,47 @@ class AgriculturalMLService:
         return min(9.5, max(1.5, et0))
 
     def calculate_crop_water_demand(self, crop: str, growth_stage: str, et0: float) -> dict[str, float]:
-        """Calculates Crop Evapotranspiration (ETc = Kc * ET0)."""
-        crop_key = crop.lower()
-        stage_key = growth_stage.lower()
+        """Calculates Crop Evapotranspiration (ETc = Kc * ET0) with multilingual crop support."""
+        crop_clean = (crop or "maize").strip().lower()
+        stage_clean = (growth_stage or "vegetative").strip().lower()
 
-        kc_stages = self.KC_TABLE.get(crop_key, {"initial": 0.5, "flowering": 1.1, "maturity": 0.6})
-        # Default match or fallback
-        kc = kc_stages.get(stage_key, 0.95)
+        try:
+            from app.services.crop_dictionary import detect_crop_multilingual
+            det = detect_crop_multilingual(crop_clean)
+            canonical = det.get("canonical_name", crop_clean)
+        except Exception:
+            canonical = crop_clean
+
+        # Direct table match or find substring match
+        kc_stages = self.KC_TABLE.get(canonical) or self.KC_TABLE.get(crop_clean)
+        if not kc_stages:
+            for k, stages in self.KC_TABLE.items():
+                if k in canonical or canonical in k or k in crop_clean or crop_clean in k:
+                    kc_stages = stages
+                    break
+
+        if kc_stages and stage_clean in kc_stages:
+            kc = kc_stages[stage_clean]
+        elif any(w in stage_clean for w in ["flower", "fruit", "pod", "silking", "tasseling", "bulking", "heading"]):
+            kc = 1.15
+        elif any(w in stage_clean for w in ["seedling", "initial", "emergence", "transplant", "pinhead"]):
+            kc = 0.45
+        elif any(w in stage_clean for w in ["vegetative", "tillering", "elongation", "canopy", "shooting"]):
+            kc = 0.85
+        elif any(w in stage_clean for w in ["maturity", "ripen", "curing", "harvest", "grain-fill"]):
+            kc = 0.65
+        else:
+            kc = 0.90
 
         etc_mm_day = round(et0 * kc, 2)
         liters_per_sq_meter = etc_mm_day  # 1 mm = 1 L/m^2
 
         return {
             "et0_reference_mm": et0,
-            "crop_coefficient_kc": kc,
+            "crop_coefficient_kc": round(kc, 2),
             "crop_demand_etc_mm_day": etc_mm_day,
+            "crop_water_demand_etc_mm_day": etc_mm_day,
+            "etc_daily_mm": etc_mm_day,
             "water_liters_per_m2_day": liters_per_sq_meter
         }
 

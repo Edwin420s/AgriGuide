@@ -71,7 +71,8 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
       await loadRules();
       onRuleChanged();
     } catch (err: any) {
-      alert(err.message);
+      setErrorNotice(err.message || 'Failed to save rule');
+      setTimeout(() => setErrorNotice(''), 4000);
     } finally {
       setSubmitting(false);
     }
@@ -152,9 +153,14 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
 
                   <p className="rule-desc">{r.description}</p>
 
-                  <div className="metta-code-box">
-                    <Code2 size={14} />
-                    <code>{r.metta_expr || `(if (>= $rain ${r.condition?.rain_threshold_min}) ${r.action})`}</code>
+                  <div className="rule-condition-box">
+                    <span className="condition-pill">
+                      Trigger: <strong>24h Rain Forecast &ge; {r.condition?.rain_threshold_min ?? 60}%</strong>
+                    </span>
+                    <span className="arrow-sep">→</span>
+                    <span className="action-pill">
+                      Action: <strong>{r.action}</strong>
+                    </span>
                   </div>
                 </div>
               ))
@@ -167,7 +173,7 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
           <div className="panel-header">
             <div className="title-row">
               <Plus size={18} />
-              <h3>Teach The Agent a New Rule</h3>
+              <h3>Teach The Agent a New Field Rule</h3>
             </div>
           </div>
 
@@ -176,7 +182,7 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
               <span>Rule Name</span>
               <input
                 type="text"
-                placeholder="e.g. Sandy Loam Rain Buffer"
+                placeholder="e.g. Kirinyaga Flowering Rain Buffer"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -187,7 +193,7 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
               <span>Description / Farmer Rationale</span>
               <input
                 type="text"
-                placeholder="e.g. Delay irrigation if rain forecast is above 60%"
+                placeholder="e.g. Pause irrigation when rain forecast is above 60% to avoid waterlogging"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -195,7 +201,7 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
 
             <div className="form-row">
               <label>
-                <span>Forecast Rain Threshold (%): {rainMin}%</span>
+                <span>Forecast Rain Threshold: {rainMin}%</span>
                 <input
                   type="range"
                   min="30"
@@ -207,7 +213,7 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
               </label>
 
               <label>
-                <span>Resulting Action</span>
+                <span>Recommended Action</span>
                 <select value={action} onChange={(e) => setAction(e.target.value)}>
                   <option value="WAIT">WAIT (Conserve Water)</option>
                   <option value="IRRIGATE">IRRIGATE (Protect Crop)</option>
@@ -216,39 +222,32 @@ export const RuleLearningEditor: React.FC<RuleLearningEditorProps> = ({
               </label>
             </div>
 
-            <label>
-              <span>Custom MeTTa S-Expression (Optional Override)</span>
-              <textarea
-                rows={2}
-                placeholder="(= (kirinyaga-rule $soil $rain) (if (>= $rain 60) WAIT CONTINUED))"
-                value={mettaExpr}
-                onChange={(e) => setMettaExpr(e.target.value)}
-              />
-            </label>
-
             <button type="submit" className="primary" disabled={submitting || !name.trim()}>
               <Plus size={16} />
-              <span>{submitting ? 'Registering Rule...' : 'Register Rule in MeTTa Space'}</span>
+              <span>{submitting ? 'Activating Rule...' : 'Save & Activate Field Rule'}</span>
             </button>
           </form>
 
-          {/* Baseline Knowledge Reference */}
+          {/* Baseline Agronomic Principles */}
           <div className="baseline-reference">
             <div className="ref-head">
               <BookOpen size={16} />
-              <b>Baseline Agriculture Knowledge (Core MeTTa)</b>
+              <b>Standard Agronomic Governing Principles</b>
             </div>
-            <pre>
-{`(= (water-demand flowering) high)
-(= (water-demand vegetative) medium)
-(= (irrigation-decision $soil $rain $water $current-rain)
-    (if $current-rain WAIT
-        (if (and (< $soil 18) (>= $rain 70) (== $water limited))
-            WAIT
-            (if (and (< $soil 18) (< $rain 35) (not (== $water unavailable)))
-                IRRIGATE
-                REASSESS))))`}
-            </pre>
+            <div className="baseline-cards-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <div style={{ background: '#f9fbf9', padding: '10px', borderRadius: '6px', border: '1px solid #e1ece5', fontSize: '13px' }}>
+                <strong style={{ color: '#1e5a32' }}>🌱 Crop Sensitivity Hierarchy:</strong>
+                <p style={{ margin: '4px 0 0 0', color: '#405247' }}>Flowering & grain filling stages receive highest priority over vegetative stages during water scarcity.</p>
+              </div>
+              <div style={{ background: '#f9fbf9', padding: '10px', borderRadius: '6px', border: '1px solid #e1ece5', fontSize: '13px' }}>
+                <strong style={{ color: '#1e5a32' }}>🌧️ Rain Conservation Policy:</strong>
+                <p style={{ margin: '4px 0 0 0', color: '#405247' }}>When rain forecast probability exceeds 70%, immediate irrigation is suspended to conserve reservoir capacity.</p>
+              </div>
+              <div style={{ background: '#f9fbf9', padding: '10px', borderRadius: '6px', border: '1px solid #e1ece5', fontSize: '13px' }}>
+                <strong style={{ color: '#1e5a32' }}>🛡️ Root Zone Moisture Floor:</strong>
+                <p style={{ margin: '4px 0 0 0', color: '#405247' }}>If soil moisture drops below critical 18% threshold and rain probability is under 35%, drip irrigation is triggered immediately.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

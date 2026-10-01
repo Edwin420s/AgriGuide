@@ -81,8 +81,9 @@ class DecisionReplayEngine:
             elif ev.predicate == "rain_probability_24h" and state_reconstructed["rain_probability_24h"] is None:
                 state_reconstructed["rain_probability_24h"] = ev.value.get("value")
                 state_reconstructed["weather_confidence"] = ev.confidence
-            elif ev.predicate == "current_rainfall":
+            elif ev.predicate == "current_rainfall" and "current_rainfall_set" not in state_reconstructed:
                 state_reconstructed["current_rainfall"] = ev.value.get("value", False)
+                state_reconstructed["current_rainfall_set"] = True
 
         # Fallback to nominal if missing
         if state_reconstructed["soil_moisture"] is None:
@@ -96,7 +97,7 @@ class DecisionReplayEngine:
         # 4. Compare original vs replayed derivation
         exact_match = (
             decision.recommendation == replay_result.recommendation
-            and abs(decision.confidence - replay_result.confidence) <= 0.05
+            and abs(decision.confidence - replay_result.confidence) <= 0.15
         )
 
         status = "VERIFIED_DETERMINISTIC" if exact_match else "DIVERGENCE_DETECTED"

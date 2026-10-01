@@ -404,8 +404,8 @@ class MettaService:
             elif "WAIT" in raw:
                 rec = "WAIT"
 
-            rule_id = self._map_rule_id(rec)
-            cf = self.evaluate_counterfactuals(soil, rain, water)
+            rule_id = self._map_rule_id(rec, current_rain)
+            cf = self.evaluate_counterfactuals(soil, rain, water, current_rain, rec)
             return MettaExecutionResult(
                 recommendation=rec,
                 confidence=0.92,
@@ -447,8 +447,8 @@ class MettaService:
             elif "WAIT" in raw:
                 rec = "WAIT"
 
-            rule_id = self._map_rule_id(rec)
-            cf = self.evaluate_counterfactuals(soil, rain, water)
+            rule_id = self._map_rule_id(rec, current_rain)
+            cf = self.evaluate_counterfactuals(soil, rain, water, current_rain, rec)
             return MettaExecutionResult(
                 recommendation=rec,
                 confidence=0.88,
@@ -558,7 +558,7 @@ class MettaService:
         elif isinstance(eval_result, str):
             rec = eval_result.upper()
 
-        rule_id = fired_custom_rule or self._map_rule_id(rec)
+        rule_id = fired_custom_rule or self._map_rule_id(rec, current_rain)
 
         # Map steps for the audit trail
         formatted_steps = []
@@ -572,7 +572,7 @@ class MettaService:
                 "confidence": 0.92
             })
 
-        cf = self.evaluate_counterfactuals(soil, rain, water)
+        cf = self.evaluate_counterfactuals(soil, rain, water, current_rain, rec)
         return MettaExecutionResult(
             recommendation=rec,
             confidence=0.91 if fired_custom_rule else 0.88,
@@ -584,15 +584,26 @@ class MettaService:
             raw_output=repr(eval_result)
         )
 
-    def evaluate_counterfactuals(self, soil: float, rain: float, water: str = "limited") -> dict[str, Any]:
+    def evaluate_counterfactuals(
+        self,
+        soil: float,
+        rain: float,
+        water: str = "limited",
+        current_rain: bool = False,
+        rec: str | None = None
+    ) -> dict[str, Any]:
         """Symbolic counterfactual trade-off analysis (What if you irrigate vs what if you wait?)."""
-        is_high_rain = rain >= 70
-        is_low_rain = rain < 35
+        is_high_rain = rain >= 70 or current_rain or rec == "WAIT"
+        is_low_rain = (rain < 35 and not current_rain and rec != "WAIT")
         
         if is_high_rain:
             irrigate_eff = "POOR"
-            irrigate_risk = "Root leaching & reservoir water waste"
-            irrigate_impact = f"Wastes limited reservoir water when high rainfall ({rain}%) is imminent."
+            irrigate_risk = "Root leaching, waterlogging & reservoir waste"
+            irrigate_impact = (
+                "Wastes scarce irrigation reserves while rain is actively falling on the field."
+                if current_rain else
+                f"Wastes limited reservoir water when high rainfall ({rain}%) is imminent."
+            )
             irrigate_rec = "AVOID"
         else:
             irrigate_eff = "OPTIMAL"
@@ -607,8 +618,16 @@ class MettaService:
             wait_rec = "AVOID"
         else:
             wait_eff = "HIGH"
-            wait_risk = "Minimal - natural rainfall compensates"
-            wait_impact = f"Conserves limited irrigation reserves while relying on expected {rain}% rainfall."
+            wait_risk = (
+                "Minimal - natural precipitation satisfies crop moisture demand"
+                if current_rain else
+                "Minimal - natural rainfall compensates"
+            )
+            wait_impact = (
+                "Conserves limited irrigation reserves while relying on active precipitation."
+                if current_rain else
+                f"Conserves limited irrigation reserves while relying on expected {rain}% rainfall."
+            )
             wait_rec = "PROCEED"
 
         return {
@@ -628,7 +647,9 @@ class MettaService:
             }
         }
 
-    def _map_rule_id(self, rec: str) -> str:
+    def _map_rule_id(self, rec: str, current_rain: bool = False) -> str:
+        if current_rain:
+            return "R-CURRENT-RAIN-WATERLOGGING-PREVENTION"
         if rec == "IRRIGATE":
             return "R-LOW-MOISTURE-LOW-RAIN"
         elif rec == "WAIT":

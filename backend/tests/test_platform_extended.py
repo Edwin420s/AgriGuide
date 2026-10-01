@@ -253,3 +253,58 @@ def test_extended_api_endpoints():
             assert "is_exact_match" in r_rep.json()
     finally:
         db.close()
+
+
+def test_farm_and_field_lifecycle():
+    # 1. Location Resolve
+    r_loc = client.get("/api/locations/resolve?query=Nanyuki")
+    assert r_loc.status_code == 200
+    data_loc = r_loc.json()
+    assert "latitude" in data_loc
+    assert "longitude" in data_loc
+    assert "preview_weather" in data_loc
+    assert data_loc["preview_weather"]["temperature_c"] is not None
+
+    # 2. Create Farm with Auto-Geocoding
+    r_farm = client.post("/api/farms", json={
+        "name": "Laikipia Plateau Ranch",
+        "location_name": "Nanyuki",
+        "water_availability": "LIMITED",
+        "area": 4.5
+    })
+    assert r_farm.status_code == 200
+    data_farm = r_farm.json()
+    assert "id" in data_farm
+    farm_id = data_farm["id"]
+
+    # 3. Create Field and verify digital twin initialized
+    r_field = client.post("/api/fields", json={
+        "farm_id": farm_id,
+        "name": "North Meadow - Barley",
+        "crop": "barley",
+        "growth_stage": "vegetative",
+        "soil_type": "loam",
+        "irrigation_method": "sprinkler",
+        "area_ha": 2.0
+    })
+    assert r_field.status_code == 200
+    data_field = r_field.json()
+    assert "id" in data_field
+    field_id = data_field["id"]
+
+    # 4. Verify initial decision created automatically
+    r_dec = client.get(f"/api/fields/{field_id}/decisions")
+    assert r_dec.status_code == 200
+    assert len(r_dec.json()) >= 1
+    assert r_dec.json()[0]["recommendation"] in ["IRRIGATE", "WAIT", "REASSESS"]
+
+    # 5. Verify initial evidence context populated
+    r_ev = client.get(f"/api/fields/{field_id}/evidence")
+    assert r_ev.status_code == 200
+    assert len(r_ev.json()) >= 2
+
+    # 6. Verify field deletion and cleanup
+    r_del = client.delete(f"/api/fields/{field_id}")
+    assert r_del.status_code == 200
+    assert r_del.json()["deleted"] is True
+

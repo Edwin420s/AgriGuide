@@ -1,6 +1,35 @@
 import React, { useState } from 'react';
-import { Play, RotateCcw, Scale, Sliders, Sparkles, Terminal } from 'lucide-react';
+import { Play, RotateCcw, Scale, Sliders, Sparkles, Terminal, CheckCircle2 } from 'lucide-react';
 import { simulateWhatIf } from '../lib/api';
+
+const formatStepDescription = (step: any) => {
+  const type = step?.type || '';
+  const raw = String(step?.output || step?.result || '');
+  
+  if (type === 'OBSERVATION') {
+    return 'Ingested simulated soil moisture and 24h rain forecast parameters';
+  }
+  if (type === 'BELIEF') {
+    return raw.includes('flowering')
+      ? 'Crop in flowering stage: High water stress vulnerability identified'
+      : 'Evaluated crop water demand and transpiration coefficients';
+  }
+  if (type === 'RULE_MATCH' || raw.includes('if')) {
+    return 'Evaluated agronomic water conservation policy against soil and precipitation thresholds';
+  }
+  if (type === 'CONDITION_EVAL') {
+    if (raw.toUpperCase().includes('IRRIGATE')) return 'Soil moisture below threshold and rain forecast unlikely → Trigger Irrigation';
+    if (raw.toUpperCase().includes('WAIT')) return 'Sufficient precipitation probability forecast → Hold irrigation to conserve water';
+    return `Evaluated field condition: ${raw}`;
+  }
+  if (type === 'DECISION') {
+    return `Recommendation derived: ${raw.toUpperCase()}`;
+  }
+  if (type === 'CUSTOM_RULE_MATCH') {
+    return `Custom field rule triggered: ${step.rule_name || raw}`;
+  }
+  return raw.length > 80 ? raw.substring(0, 80) + '...' : raw;
+};
 
 interface WhatIfSimulatorProps {
   fieldId: string;
@@ -18,10 +47,12 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
 
   const [loading, setLoading] = useState<boolean>(false);
   const [simResult, setSimResult] = useState<any>(null);
+  const [simError, setSimError] = useState<string>('');
 
   const handleSimulate = async () => {
     if (!fieldId) return;
     setLoading(true);
+    setSimError('');
     try {
       const payload: any = {
         soil_moisture: soil,
@@ -36,7 +67,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
       const res = await simulateWhatIf(fieldId, payload);
       setSimResult(res);
     } catch (err: any) {
-      alert(err.message);
+      setSimError(err.message || 'Simulation failed');
     } finally {
       setLoading(false);
     }
@@ -56,11 +87,16 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
           <span className="pill pill-agent">NON-DESTRUCTIVE SANDBOX</span>
           <h2>What-If Scenario Simulator</h2>
           <p className="subtitle">
-            Experiment with different weather and soil conditions in real-time. Watch how MeTTa rules deduct
-            recommendations without mutating the field database.
+            Simulate weather shifts and evaluate operational decisions in real-time without mutating historical field records.
           </p>
         </div>
       </div>
+
+      {simError && (
+        <div className="notice error" style={{ marginBottom: '1rem' }}>
+          {simError}
+        </div>
+      )}
 
       {/* Quick Presets */}
       <div className="presets-bar">
@@ -207,7 +243,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
 
           <button className="primary" onClick={handleSimulate} disabled={loading} style={{ marginTop: '1.5rem', width: '100%' }}>
             <Play size={16} />
-            <span>{loading ? 'Evaluating MeTTa S-Expressions...' : 'Run Simulation'}</span>
+            <span>{loading ? 'Evaluating Agronomic Rules...' : 'Run Scenario Simulation'}</span>
           </button>
         </div>
 
@@ -216,9 +252,9 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
           <div className="panel-header">
             <div className="title-row">
               <Terminal size={18} />
-              <h3>MeTTa Deduction Output</h3>
+              <h3>Simulated Farm Decision</h3>
             </div>
-            <span className="pill pill-mode">INSTANT DEDUCTION</span>
+            <span className="pill pill-mode">INSTANT EVALUATION</span>
           </div>
 
           {simResult ? (
@@ -234,12 +270,12 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
 
               <p className="sim-reason">{simResult.reason}</p>
 
-              {/* MeTTa Counterfactual Trade-off Analysis */}
+              {/* Action Trade-off Analysis */}
               {simResult.counterfactuals && (
                 <div className="counterfactual-section">
                   <div className="counterfactual-header">
                     <Scale size={14} />
-                    <span>MeTTa Counterfactual Analysis ("What If?")</span>
+                    <span>Action Trade-off Analysis ("What If?")</span>
                   </div>
                   <div className="counterfactual-grid">
                     {simResult.counterfactuals.if_irrigate && (
@@ -278,7 +314,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
               )}
 
               <div className="rules-fired-box">
-                <b>Rules Fired:</b>
+                <b>Governing Farm Rules:</b>
                 <div className="rule-tags">
                   {simResult.rules?.map((r: string, idx: number) => (
                     <span key={idx} className="rule-tag">
@@ -289,12 +325,41 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
               </div>
 
               <div className="derivation-steps">
-                <b>Symbolic Derivation Steps:</b>
-                <div className="steps-list">
+                <b>Agronomic Evaluation Sequence:</b>
+                <div className="steps-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
                   {simResult.steps?.map((s: any, idx: number) => (
-                    <div key={idx} className="step-item">
-                      <span className="step-badge">{s.type}</span>
-                      <code>{JSON.stringify(s.output || s.result)}</code>
+                    <div
+                      key={idx}
+                      className="step-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        background: '#f9fcf9',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #dce8df'
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: '#1e5a32',
+                          color: '#ffffff',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          flexShrink: 0
+                        }}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span style={{ fontSize: '13px', color: '#244833' }}>
+                        {formatStepDescription(s)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -303,7 +368,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({ fieldId, field
           ) : (
             <div className="empty-sim">
               <Sparkles size={32} />
-              <p>Adjust the sliders and click "Run Simulation" to test the MeTTa reasoning engine.</p>
+              <p>Adjust the sliders and click "Run Scenario Simulation" to evaluate crop outcomes.</p>
             </div>
           )}
         </div>

@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from app.models.domain import Belief, Decision, Evidence, Field, FieldRule, Sensor, SourceReliability
+from app.services.ml_analytics import AgriculturalMLService
 
 
 @dataclass
@@ -45,6 +46,7 @@ class AgriculturalKnowledgeGraph:
         self.entities: dict[str, GraphEntity] = {}
         self.relations: list[GraphRelation] = []
         self.causal_chains: list[dict[str, Any]] = []
+        self.analytics: dict[str, Any] = {}
 
     def add_entity(self, entity: GraphEntity):
         self.entities[entity.id] = entity
@@ -78,6 +80,7 @@ class AgriculturalKnowledgeGraph:
             ],
             "causal_chains": self.causal_chains,
             "metta_atoms": self.to_metta_atoms(),
+            "analytics": self.analytics,
         }
 
     def to_metta_atoms(self) -> list[str]:
@@ -144,7 +147,15 @@ class WorldModelService:
             properties={"growth_stage": field.growth_stage}
         ))
         kg.add_relation(GraphRelation(subject=field.id, predicate="grows", object=crop_id))
-        kg.add_relation(GraphRelation(subject=crop_id, predicate="currently_at", object=field.growth_stage.lower()))
+
+        stage_id = f"stage_{field.growth_stage.lower()}"
+        kg.add_entity(GraphEntity(
+            id=stage_id,
+            type="GrowthStage",
+            label=f"Stage: {field.growth_stage.capitalize()}",
+            properties={"stage": field.growth_stage}
+        ))
+        kg.add_relation(GraphRelation(subject=crop_id, predicate="currently_at", object=stage_id))
 
         # 4. Soil Entity
         soil_id = f"soil_{field.soil_type.lower()}"
@@ -222,6 +233,40 @@ class WorldModelService:
             }
         ]
 
+        # 9. Agronomic Physics & Visualization Analytics
+        belief_map: dict[str, Any] = {}
+        for b in beliefs:
+            b_val = b.value.get("value") if isinstance(b.value, dict) else b.value
+            belief_map[b.predicate] = b_val
+
+        sm = float(belief_map.get("soil_moisture") or 17.5)
+        rp = float(belief_map.get("rain_probability_24h") or 0.0)
+        temp = float(belief_map.get("temperature_c") or 24.5)
+        hum = float(belief_map.get("humidity_pct") or 65.0)
+        wind = float(belief_map.get("wind_speed_kmh") or 9.6)
+        ml_service = AgriculturalMLService()
+        et0 = ml_service.estimate_et0(temp, hum, wind)
+        crop_demand = ml_service.calculate_crop_water_demand(field.crop, field.growth_stage, et0)
+        kc = crop_demand.get("crop_coefficient_kc", 1.15)
+        etc = crop_demand.get("crop_demand_etc_mm_day") or crop_demand.get("crop_water_demand_etc_mm_day", 4.8)
+
+        kg.analytics = {
+            "soil_moisture": sm,
+            "wilting_point": 18.0,
+            "field_capacity": 34.0,
+            "mad_threshold": 24.0,
+            "rain_probability_24h": rp,
+            "temperature_c": temp,
+            "humidity_pct": hum,
+            "wind_speed_kmh": wind,
+            "reference_et0_mm": et0,
+            "crop_coefficient_kc": kc,
+            "etc_daily_mm": etc,
+            "water_status": "CRITICAL_DEFICIT" if sm < 18.0 else ("DEPLETING" if sm < 24.0 else "OPTIMAL_HYDRATION"),
+            "readily_available_water_pct": max(0.0, round(sm - 18.0, 1)),
+            "recommendation_action": last_decision.recommendation if last_decision else "EVALUATE"
+        }
+
         return kg
 
     def build(self, db: Session, field: Field) -> dict[str, Any]:
@@ -271,11 +316,43 @@ class WorldModelService:
                 })
                 conflict_penalty += 0.12
 
+        # Check current rainfall conflict or microclimate discrepancy
+        current_rain_items = by_predicate.get("current_rainfall", [])
+        if len(current_rain_items) >= 2:
+            val1 = bool(current_rain_items[0].value.get("value"))
+            val2 = bool(current_rain_items[1].value.get("value"))
+            if val1 != val2:
+                conflicts.append({
+                    "predicate": "current_rainfall",
+                    "sources": [current_rain_items[0].source_type, current_rain_items[1].source_type],
+                    "values": [val1, val2],
+                    "variance": 1.0,
+                    "description": f"Rainfall report discrepancy: {current_rain_items[0].source_type} reports {'rain falling' if val1 else 'no rain'}, while {current_rain_items[1].source_type} reports {'rain falling' if val2 else 'no rain'}."
+                })
+                conflict_penalty += 0.20
+        elif current_rain_items and current_rain_items[0].value.get("value") and rain_items and (rain_items[0].value.get("value") or 0) < 15:
+            conflicts.append({
+                "predicate": "rainfall_vs_forecast",
+                "sources": [current_rain_items[0].source_type, rain_items[0].source_type],
+                "values": [True, rain_items[0].value.get("value")],
+                "variance": 0.8,
+                "description": f"Localized rain context: Farmer observed active rain, while regional weather model shows {rain_items[0].value.get('value')}% 24h probability. Localized shower recognized."
+            })
+            conflict_penalty += 0.05
+
         # Primary values
         soil = soil_items[0] if soil_items else None
         rain = rain_items[0] if rain_items else None
-        current_rain_items = by_predicate.get("current_rainfall", [])
         current = current_rain_items[0] if current_rain_items else None
+
+        temp_items = by_predicate.get("temperature_c", [])
+        temp = temp_items[0] if temp_items else None
+
+        hum_items = by_predicate.get("humidity_pct", [])
+        hum = hum_items[0] if hum_items else None
+
+        wind_items = by_predicate.get("wind_speed_kmh", [])
+        wind = wind_items[0] if wind_items else None
 
         crop_demand = "HIGH" if field.growth_stage.lower() in {"flowering", "tasseling", "silking", "fruiting"} else "MEDIUM"
 
@@ -310,6 +387,10 @@ class WorldModelService:
         # Build Agricultural Knowledge Graph
         kg = self.build_knowledge_graph(db, field)
 
+        temp_val = temp.value.get("value") if temp else 25.3
+        hum_val = hum.value.get("value") if hum else 42.0
+        wind_val = wind.value.get("value") if wind else 9.6
+
         return {
             "field_id": field.id,
             "crop": field.crop,
@@ -322,6 +403,10 @@ class WorldModelService:
             "weather_confidence": round(adj_weather_conf, 2),
             "weather_source": (rain.source_type if rain else None),
             "current_rainfall": (current.value.get("value") if current else False),
+            "temperature_c": temp_val,
+            "temperature_source": (temp.source_type if temp else "WEATHER_PROVIDER"),
+            "humidity_pct": hum_val,
+            "wind_speed_kmh": wind_val,
             "water_availability": field.farm.water_availability if field.farm else "LIMITED",
             "evidence_count": len(evidences),
             "has_conflicts": len(conflicts) > 0,

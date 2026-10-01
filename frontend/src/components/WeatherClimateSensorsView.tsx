@@ -64,7 +64,12 @@ export const WeatherClimateSensorsView: React.FC<WeatherClimateSensorsProps> = (
 
     try {
       const res = await checkSensorAnomaly(field.id, history, currentValue, 'soil_moisture');
-      setAnomalyTestResult({ ...res, testType });
+      setAnomalyTestResult({
+        ...res,
+        testType,
+        sensor_type: 'Capacitive Soil Moisture Probe (SNS-SOIL-01)',
+        current_value: currentValue
+      });
     } catch (e) {
       console.error('Anomaly check failed:', e);
     } finally {
@@ -72,9 +77,9 @@ export const WeatherClimateSensorsView: React.FC<WeatherClimateSensorsProps> = (
     }
   };
 
-  const et0 = analytics?.fao56_evapotranspiration?.reference_et0_mm_day || 4.2;
-  const etc = analytics?.fao56_evapotranspiration?.crop_water_demand_etc_mm_day || 3.4;
-  const kc = analytics?.fao56_evapotranspiration?.crop_coefficient_kc || 0.8;
+  const et0 = analytics?.fao56_evapotranspiration?.reference_et0_mm_day ?? analytics?.fao56_evapotranspiration?.et0_reference_mm ?? 4.2;
+  const etc = analytics?.fao56_evapotranspiration?.crop_demand_etc_mm_day ?? analytics?.fao56_evapotranspiration?.crop_water_demand_etc_mm_day ?? analytics?.fao56_evapotranspiration?.etc_daily_mm ?? 4.8;
+  const kc = analytics?.fao56_evapotranspiration?.crop_coefficient_kc ?? 1.15;
   const depletion = analytics?.root_zone_depletion_forecast;
 
   return (
@@ -125,14 +130,16 @@ export const WeatherClimateSensorsView: React.FC<WeatherClimateSensorsProps> = (
 
             <div className="metric-box">
               <span className="metric-label">Ambient Temp</span>
-              <b className="metric-val">24.5 °C</b>
-              <small className="metric-sub">Min: 17°C · Max: 29°C</small>
+              <b className="metric-val">{state?.temperature_c != null ? `${state.temperature_c} °C` : '24.5 °C'}</b>
+              <small className="metric-sub">{state?.temperature_source === 'FARMER' ? 'Farmer Logged' : 'Open-Meteo Synced'}</small>
             </div>
 
             <div className="metric-box">
               <span className="metric-label">Relative Humidity</span>
-              <b className="metric-val">68%</b>
-              <small className="metric-sub">Dew Point: 18.2 °C</small>
+              <b className="metric-val">{state?.humidity_pct != null ? `${state.humidity_pct}%` : '68%'}</b>
+              <small className="metric-sub">
+                Dew Point: {((state?.temperature_c || 24.5) - ((100 - (state?.humidity_pct || 68)) / 5)).toFixed(1)} °C
+              </small>
             </div>
           </div>
 
@@ -295,7 +302,7 @@ export const WeatherClimateSensorsView: React.FC<WeatherClimateSensorsProps> = (
             <span className="pill pill-revision">NEURAL-SYMBOLIC ANOMALY DETECTOR</span>
             <h3>Interactive Sensor Fault & Anomaly Test Bench</h3>
             <small style={{ color: '#555' }}>
-              Test how AgriGuide detects physical sensor failure (spikes, flatlines, frozen probes) and penalizes evidence confidence before feeding into MeTTa reasoning.
+              Test how AgriGuide detects physical sensor failure (spikes, flatlines, frozen probes) and discounts evidence confidence before reaching the decision engine.
             </small>
           </div>
           <AlertTriangle size={22} style={{ color: '#d97706' }} />
@@ -333,57 +340,65 @@ export const WeatherClimateSensorsView: React.FC<WeatherClimateSensorsProps> = (
           </button>
         </div>
 
-        {anomalyTestResult && (
-          <div
-            style={{
-              marginTop: '1.25rem',
-              padding: '16px',
-              borderRadius: '8px',
-              background: anomalyTestResult.anomaly_result?.is_anomalous ? '#fffbeb' : '#f0fdf4',
-              border: `1px solid ${anomalyTestResult.anomaly_result?.is_anomalous ? '#fde68a' : '#bbf7d0'}`
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {anomalyTestResult.anomaly_result?.is_anomalous ? (
-                  <AlertTriangle size={20} style={{ color: '#d97706' }} />
-                ) : (
-                  <CheckCircle2 size={20} style={{ color: '#16a34a' }} />
-                )}
-                <strong style={{ fontSize: '14px', color: anomalyTestResult.anomaly_result?.is_anomalous ? '#92400e' : '#166534' }}>
-                  {anomalyTestResult.anomaly_result?.is_anomalous
-                    ? `Anomaly Detected: ${anomalyTestResult.anomaly_result?.anomaly_type}`
-                    : 'Telemetry Verified Normal & Physically Plausible'}
-                </strong>
-              </div>
-              <span
-                className="pill"
-                style={{
-                  background: anomalyTestResult.anomaly_result?.is_anomalous ? '#fef3c7' : '#dcfce7',
-                  color: anomalyTestResult.anomaly_result?.is_anomalous ? '#92400e' : '#166534'
-                }}
-              >
-                Severity: {anomalyTestResult.anomaly_result?.severity || 'NONE'}
-              </span>
-            </div>
+        {anomalyTestResult && (() => {
+          const isAnom = Boolean(anomalyTestResult.is_anomalous ?? anomalyTestResult.anomaly_result?.is_anomalous);
+          const anomType = anomalyTestResult.anomaly_type || anomalyTestResult.anomaly_result?.anomaly_type || 'FAULT';
+          const severity = anomalyTestResult.severity || anomalyTestResult.anomaly_result?.severity || (isAnom ? 'WARNING' : 'NONE');
+          const description = anomalyTestResult.description || anomalyTestResult.anomaly_result?.description || 'Reading evaluated against historical sensor variance.';
+          const penalty = anomalyTestResult.confidence_penalty ?? anomalyTestResult.anomaly_result?.confidence_penalty ?? 0;
 
-            <p style={{ margin: '6px 0', fontSize: '13px', color: '#374151' }}>
-              {anomalyTestResult.anomaly_result?.description}
-            </p>
+          return (
+            <div
+              style={{
+                marginTop: '1.25rem',
+                padding: '16px',
+                borderRadius: '8px',
+                background: isAnom ? '#fffbeb' : '#f0fdf4',
+                border: `1px solid ${isAnom ? '#fde68a' : '#bbf7d0'}`
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {isAnom ? (
+                    <AlertTriangle size={20} style={{ color: '#d97706' }} />
+                  ) : (
+                    <CheckCircle2 size={20} style={{ color: '#16a34a' }} />
+                  )}
+                  <strong style={{ fontSize: '14px', color: isAnom ? '#92400e' : '#166534' }}>
+                    {isAnom
+                      ? `Sensor Anomaly Flagged: ${anomType.replaceAll('_', ' ')}`
+                      : 'Telemetry Verified Normal & Physically Plausible'}
+                  </strong>
+                </div>
+                <span
+                  className="pill"
+                  style={{
+                    background: isAnom ? '#fef3c7' : '#dcfce7',
+                    color: isAnom ? '#92400e' : '#166534'
+                  }}
+                >
+                  Severity: {severity}
+                </span>
+              </div>
 
-            <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '12.5px', color: '#4b5563' }}>
-              <div>
-                <strong>Sensor Tested:</strong> {anomalyTestResult.sensor_type}
-              </div>
-              <div>
-                <strong>Reading Evaluated:</strong> {anomalyTestResult.current_value}%
-              </div>
-              <div>
-                <strong>MeTTa Confidence Penalty:</strong> -{Math.round((anomalyTestResult.anomaly_result?.confidence_penalty || 0) * 100)}%
+              <p style={{ margin: '6px 0', fontSize: '13px', color: '#374151' }}>
+                {description}
+              </p>
+
+              <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '12.5px', color: '#4b5563', flexWrap: 'wrap' }}>
+                <div>
+                  <strong>Sensor Tested:</strong> {anomalyTestResult.sensor_type || 'Capacitive Soil Probe'}
+                </div>
+                <div>
+                  <strong>Reading Evaluated:</strong> {anomalyTestResult.current_value}%
+                </div>
+                <div>
+                  <strong>Confidence Discount:</strong> -{Math.round(penalty * 100)}%
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

@@ -5,9 +5,41 @@ from app.db.session import Base, engine
 from app.models import domain  # noqa: F401
 from app.api.routes import router
 
+from sqlalchemy import text
+
 Base.metadata.create_all(bind=engine)
+
+# Idempotent migration for crop_catalog multilingual columns in SQLite
+with engine.connect() as conn:
+    for col_name, col_type in [("name_en", "VARCHAR(100)"), ("name_sw", "VARCHAR(100)"), ("aliases", "JSON")]:
+        try:
+            conn.execute(text(f"ALTER TABLE crop_catalog ADD COLUMN {col_name} {col_type}"))
+            conn.commit()
+        except Exception:
+            pass
+
 app = FastAPI(title=settings.app_name, version="1.0.0", description="Adaptive neural-symbolic agricultural decision intelligence")
-app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",")], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# Collect all allowed origins
+cors_origins_list = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
+for default_origin in [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]:
+    if default_origin not in cors_origins_list:
+        cors_origins_list.append(default_origin)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:[0-9]+)?$",
+    allow_origins=cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(router, prefix=settings.api_prefix)
 
 @app.get("/")

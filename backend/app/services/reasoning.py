@@ -151,5 +151,5 @@ class IrrigationReasoner:
             "output": rec,
             "confidence": confidence
         })
-        cf = metta_service.evaluate_counterfactuals(soil or 20.0, rain or 20.0, water)
+        cf = metta_service.evaluate_counterfactuals(soil or 20.0, rain or 20.0, water, current_rain, rec)
         return ReasoningResult(rec, confidence, reason, rules, steps, "fallback", counterfactuals=cf)
