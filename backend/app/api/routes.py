@@ -177,9 +177,11 @@ def detect_crop_endpoint(name: str):
 @router.get("/crops")
 def get_crop_catalog(lang: str = "en", db: Session = Depends(get_db)):
     """Returns all available and auto-registered crops with multilingual English & Swahili support."""
-    # Seed default multilingual crops if table is empty
-    if db.query(CropCatalog).count() == 0:
-        for c in CROP_MULTILINGUAL_CATALOG:
+    # Ensure all default multilingual crops are seeded into database
+    existing_names = {c.name.lower() for c in db.query(CropCatalog).all()}
+    added = False
+    for c in CROP_MULTILINGUAL_CATALOG:
+        if c["name"].lower() not in existing_names:
             db.add(CropCatalog(
                 name=c["name"],
                 name_en=c["name_en"],
@@ -193,6 +195,9 @@ def get_crop_catalog(lang: str = "en", db: Session = Depends(get_db)):
                 water_demand_level=c["water_demand_level"],
                 common_stages=c["common_stages"]
             ))
+            existing_names.add(c["name"].lower())
+            added = True
+    if added:
         db.commit()
 
     crops = db.query(CropCatalog).order_by(CropCatalog.name.asc()).all()
@@ -398,18 +403,81 @@ def login(payload: UserLoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/demo-login", response_model=AuthResponse)
 def demo_login(db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == "eduedywn5@gmail.com").first()
+    """Public 1-click exploration endpoint. Always returns a demo FARMER account (never ADMIN)."""
+    demo_email = "demo.farmer@agriguide.io"
+    user = db.query(User).filter(User.email == demo_email).first()
+    if not user:
+        user = User(
+            name="Demo Farmer (Kirinyaga Shamba)",
+            email=demo_email,
+            password_hash=hash_password("DemoPassword123!"),
+            role="FARMER",
+            language="en"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        if user.role != "FARMER":
+            user.role = "FARMER"
+            db.commit()
+
+    # Find or link the demonstration farm
+    demo_farm = db.query(Farm).filter(Farm.owner_id == user.id).first()
+    if not demo_farm:
+        demo_farm = db.query(Farm).filter(Farm.name == "Kilimo Bora Demonstration Farm").first()
+        if demo_farm:
+            demo_farm.owner_id = user.id
+            db.commit()
+        else:
+            demo_farm = Farm(
+                owner_id=user.id,
+                name="Kilimo Bora Demonstration Farm",
+                location_name="Kutus, Kirinyaga County, Kenya",
+                latitude=-0.528,
+                longitude=37.283,
+                area=4.5,
+                water_availability="LIMITED"
+            )
+            db.add(demo_farm)
+            db.commit()
+            db.refresh(demo_farm)
+
+    first_field = db.query(Field).filter(Field.farm_id == demo_farm.id).first() if demo_farm else None
+    if not first_field:
+        first_field = db.query(Field).first()
+
+    token = create_access_token({"sub": user.id, "email": user.email, "name": user.name, "role": user.role})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "language": user.language
+        },
+        "farm_id": demo_farm.id if demo_farm else None,
+        "field_id": first_field.id if first_field else None
+    }
+
+@router.post("/auth/admin-login", response_model=AuthResponse)
+def admin_login(db: Session = Depends(get_db)):
+    """Administrative access endpoint for authorized system administrators."""
+    admin_email = "eduedywn5@gmail.com"
+    user = db.query(User).filter(User.email == admin_email).first()
     if not user:
         user = db.query(User).filter(User.email == "edwin@agriguide.local").first()
         if user:
-            user.email = "eduedywn5@gmail.com"
+            user.email = admin_email
             user.role = "ADMIN"
-            user.name = "Edwin"
+            user.name = "Edwin (Admin)"
             db.commit()
     if not user:
         user = User(
-            name="Edwin",
-            email="eduedywn5@gmail.com",
+            name="Edwin (Admin)",
+            email=admin_email,
             password_hash=hash_password("AdminPassword123!"),
             role="ADMIN",
             language="en"
@@ -448,12 +516,8 @@ def demo_login(db: Session = Depends(get_db)):
 def get_me(credentials: HTTPAuthorizationCredentials | None = Depends(security), db: Session = Depends(get_db)):
     user = get_optional_current_user(credentials, db)
     if not user:
-        user = db.query(User).first()
-    if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     farms = db.query(Farm).filter(Farm.owner_id == user.id).all()
-    if not farms:
-        farms = db.query(Farm).all()
     return {
         "user": {
             "id": user.id,
@@ -1501,6 +1565,38 @@ def simulate(
             "is_active": True
         })
         sim_state["custom_rules"] = sim_rules
+
+    reasoner_res = cognitive.omega.reasoner.decide(sim_state)
+    return {
+        "simulated_state": sim_state,
+        "recommendation": reasoner_res.recommendation,
+        "confidence": reasoner_res.confidence,
+        "reason": reasoner_res.reason,
+        "rules": reasoner_res.rules,
+        "steps": reasoner_res.steps,
+        "source": reasoner_res.source,
+        "counterfactuals": reasoner_res.counterfactuals
+    }
+
+@router.post("/simulate/public")
+def simulate_public(payload: WhatIfSimulateRequest):
+    sim_state = {
+        "soil_moisture": payload.soil_moisture if payload.soil_moisture is not None else 18.0,
+        "rain_probability_24h": payload.rain_probability_24h if payload.rain_probability_24h is not None else 75.0,
+        "water_availability": payload.water_availability or "LIMITED",
+        "current_rainfall": payload.current_rainfall,
+        "crop_water_demand": payload.crop_water_demand or "HIGH",
+        "weather_confidence": 0.85,
+        "soil_confidence": 0.90,
+        "conflicts": []
+    }
+    if payload.custom_rule_action and payload.custom_rule_rain_min is not None:
+        sim_state["custom_rules"] = [{
+            "name": "Simulated Farmer Rule",
+            "action": payload.custom_rule_action,
+            "condition": {"rain_threshold_min": payload.custom_rule_rain_min},
+            "is_active": True
+        }]
 
     reasoner_res = cognitive.omega.reasoner.decide(sim_state)
     return {

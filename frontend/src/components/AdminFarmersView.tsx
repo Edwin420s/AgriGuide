@@ -12,7 +12,10 @@ import {
   RefreshCw,
   Activity,
   CheckCircle2,
-  Filter
+  Filter,
+  Navigation,
+  ExternalLink,
+  Globe
 } from 'lucide-react';
 import { getAdminFarmers, FarmerAccount, FarmerProfileField } from '../lib/api';
 
@@ -44,11 +47,34 @@ export const AdminFarmersView: React.FC<AdminFarmersViewProps> = ({ onSelectFiel
     fetchFarmers();
   }, []);
 
+  const [selectedCounty, setSelectedCounty] = useState<string>('all');
+
   const totalFarmers = farmers.length;
   const totalFarms = farmers.reduce((acc, f) => acc + f.total_farms, 0);
   const totalFields = farmers.reduce((acc, f) => acc + f.total_fields, 0);
   const totalDecisions = farmers.reduce((acc, f) => acc + f.total_decisions, 0);
   const totalEvidence = farmers.reduce((acc, f) => acc + f.total_evidence, 0);
+
+  // Compute Kenyan county distribution
+  const countyDistribution = React.useMemo(() => {
+    const counts: Record<string, { farms: number; farmers: Set<string> }> = {};
+    farmers.forEach((f) => {
+      f.farms.forEach((fm) => {
+        const loc = fm.location || 'Unknown Location';
+        const parts = loc.split(',');
+        let county = parts.length >= 2 ? parts[1].replace(/county/i, '').trim() : parts[0].trim();
+        if (!county) county = 'Other';
+        if (!counts[county]) counts[county] = { farms: 0, farmers: new Set() };
+        counts[county].farms += 1;
+        counts[county].farmers.add(f.id);
+      });
+    });
+    return Object.entries(counts).map(([name, data]) => ({
+      name,
+      farms: data.farms,
+      farmers: data.farmers.size
+    }));
+  }, [farmers]);
 
   const filteredFarmers = farmers.filter((f) => {
     const q = searchQuery.toLowerCase();
@@ -64,11 +90,19 @@ export const AdminFarmersView: React.FC<AdminFarmersViewProps> = ({ onSelectFiel
       );
 
     if (filterRole === 'admin') {
-      return matchesSearch && f.role?.toUpperCase() === 'ADMIN';
+      if (f.role?.toUpperCase() !== 'ADMIN') return false;
+    } else if (filterRole === 'farmer') {
+      if (f.role?.toUpperCase() === 'ADMIN') return false;
     }
-    if (filterRole === 'farmer') {
-      return matchesSearch && f.role?.toUpperCase() !== 'ADMIN';
+
+    if (selectedCounty !== 'all') {
+      const hasCounty = f.farms.some((fm) => {
+        const loc = (fm.location || '').toLowerCase();
+        return loc.includes(selectedCounty.toLowerCase());
+      });
+      if (!hasCounty) return false;
     }
+
     return matchesSearch;
   });
 
@@ -181,6 +215,80 @@ export const AdminFarmersView: React.FC<AdminFarmersViewProps> = ({ onSelectFiel
           </div>
         </div>
       </div>
+
+      {/* Kenyan County Distribution */}
+      {countyDistribution.length > 0 && (
+        <div
+          style={{
+            background: '#ffffff',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '1px solid #e1e8e3',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#163b22', marginRight: '6px' }}>
+            <MapPin size={14} color="#0f52ba" />
+            <span>Farm Locations by County:</span>
+          </div>
+
+          <button
+            onClick={() => setSelectedCounty('all')}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11.5px',
+              borderRadius: '4px',
+              border: '1px solid',
+              borderColor: selectedCounty === 'all' ? '#1e5a32' : '#d5eadc',
+              background: selectedCounty === 'all' ? '#1e5a32' : '#f4faf6',
+              color: selectedCounty === 'all' ? '#ffffff' : '#235234',
+              cursor: 'pointer',
+              fontWeight: selectedCounty === 'all' ? 700 : 500
+            }}
+          >
+            All Regions ({totalFarms})
+          </button>
+
+          {countyDistribution.map((c) => (
+            <button
+              key={c.name}
+              onClick={() => setSelectedCounty(selectedCounty === c.name ? 'all' : c.name)}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11.5px',
+                borderRadius: '4px',
+                border: '1px solid',
+                borderColor: selectedCounty === c.name ? '#0f52ba' : '#e2e8f0',
+                background: selectedCounty === c.name ? '#0f52ba' : '#ffffff',
+                color: selectedCounty === c.name ? '#ffffff' : '#334155',
+                cursor: 'pointer',
+                fontWeight: selectedCounty === c.name ? 700 : 500,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <span>{c.name}</span>
+              <span
+                style={{
+                  fontSize: '10px',
+                  background: selectedCounty === c.name ? 'rgba(255,255,255,0.25)' : '#eef2f6',
+                  color: selectedCounty === c.name ? '#ffffff' : '#475569',
+                  padding: '1px 5px',
+                  borderRadius: '10px',
+                  fontWeight: 700
+                }}
+              >
+                {c.farms} {c.farms === 1 ? 'shamba' : 'shambas'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div
@@ -370,35 +478,87 @@ export const AdminFarmersView: React.FC<AdminFarmersViewProps> = ({ onSelectFiel
                         style={{
                           display: 'flex',
                           justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '8px',
+                          alignItems: 'flex-start',
+                          marginBottom: '10px',
                           flexWrap: 'wrap',
-                          gap: '6px'
+                          gap: '8px',
+                          borderBottom: '1px dashed #e2ede5',
+                          paddingBottom: '8px'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#163b22' }}>
-                            {fm.name}
-                          </span>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              fontSize: '11.5px',
-                              color: '#476352'
-                            }}
-                          >
-                            <MapPin size={12} color="#0f52ba" />
-                            {fm.location || 'Location not specified'}
-                          </span>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '14.5px', color: '#163b22' }}>
+                              {fm.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                background: '#eaf4ee',
+                                color: '#1e5a32',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                border: '1px solid #cce5d4'
+                              }}
+                            >
+                              SHAMBA
+                            </span>
+                          </div>
+
+                          {/* Farm Location & GPS Coordinates */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '12px',
+                                color: '#1a56db',
+                                background: '#eef3fc',
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                border: '1px solid #d0e0fc'
+                              }}
+                            >
+                              <MapPin size={13} color="#0f52ba" />
+                              <span><strong>Location:</strong> {fm.location || 'Location not specified'}</span>
+                            </span>
+
+                            {fm.latitude !== undefined && fm.longitude !== undefined && (
+                              <a
+                                href={`https://maps.google.com/?q=${fm.latitude},${fm.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '11.5px',
+                                  color: '#0f52ba',
+                                  textDecoration: 'none',
+                                  background: '#ffffff',
+                                  border: '1px solid #c8d8f0',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 600
+                                }}
+                                title="Open GPS coordinates on Google Maps"
+                              >
+                                <Navigation size={11} />
+                                <span>{fm.latitude.toFixed(3)}°, {fm.longitude.toFixed(3)}°</span>
+                                <ExternalLink size={10} />
+                              </a>
+                            )}
+                          </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <span
                             style={{
                               fontSize: '11px',
-                              padding: '2px 7px',
+                              padding: '3px 8px',
                               borderRadius: '4px',
                               background:
                                 fm.water_availability === 'RELIABLE'
@@ -412,14 +572,21 @@ export const AdminFarmersView: React.FC<AdminFarmersViewProps> = ({ onSelectFiel
                                   : fm.water_availability === 'HIGHLY_LIMITED'
                                   ? '#991b1b'
                                   : '#92400e',
-                              fontWeight: 600
+                              fontWeight: 700,
+                              border: '1px solid',
+                              borderColor:
+                                fm.water_availability === 'RELIABLE'
+                                  ? '#b7e0c5'
+                                  : fm.water_availability === 'HIGHLY_LIMITED'
+                                  ? '#fecaca'
+                                  : '#fed7aa'
                             }}
                           >
                             Water: {fm.water_availability}
                           </span>
                           {fm.area && (
-                            <span style={{ fontSize: '11px', color: '#5a7864' }}>
-                              {fm.area} acres
+                            <span style={{ fontSize: '11.5px', color: '#255034', background: '#f0f5f1', border: '1px solid #d5eadc', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              {fm.area} ha (~{(fm.area * 2.471).toFixed(1)} acres)
                             </span>
                           )}
                         </div>

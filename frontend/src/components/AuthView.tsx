@@ -19,6 +19,7 @@ import {
   loginUser,
   registerUser,
   demoLogin,
+  adminLogin,
   getKenyaLocations,
   getCrops,
   detectCrop,
@@ -29,6 +30,8 @@ import {
 
 interface AuthViewProps {
   onAuthSuccess: (authData: AuthResponse) => void;
+  onBackToLanding?: () => void;
+  initialMode?: 'signin' | 'register';
 }
 
 const POPULAR_LOCATIONS = [
@@ -42,8 +45,12 @@ const POPULAR_LOCATIONS = [
   'Embu, Embu'
 ];
 
-export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
-  const [mode, setMode] = useState<'signin' | 'register'>('signin');
+export const AuthView: React.FC<AuthViewProps> = ({
+  onAuthSuccess,
+  onBackToLanding,
+  initialMode = 'signin'
+}) => {
+  const [mode, setMode] = useState<'signin' | 'register'>(initialMode === 'register' ? 'register' : 'signin');
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -180,26 +187,65 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     }
   };
 
+  const handleAdminSignIn = async () => {
+    setError('');
+    setDemoLoading(true);
+    try {
+      const res = await adminLogin();
+      setAuthToken(res.access_token);
+      try {
+        localStorage.setItem('agriguide_user', JSON.stringify(res.user));
+      } catch {}
+      onAuthSuccess(res);
+    } catch (err: any) {
+      setError(err.message || 'Could not load administrator account.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode === 'register' ? 'register' : 'signin');
+    }
+  }, [initialMode]);
+
   return (
     <div className="auth-container">
       {/* Background decoration */}
       <div className="auth-backdrop-accent" />
 
       <div className="auth-box">
+        {onBackToLanding && (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="auth-back-to-landing-btn"
+            style={{
+              alignSelf: 'flex-start',
+              background: 'transparent',
+              border: 'none',
+              color: '#2d6a4f',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '12px',
+              padding: '4px 0'
+            }}
+          >
+            ← Back to AgriGuide Overview
+          </button>
+        )}
         {/* Brand Header */}
         <div className="auth-header">
           <div className="auth-logo-badge">
             <Sprout size={32} />
           </div>
           <h1>AgriGuide</h1>
-          <p className="auth-subtitle">Agricultural Decision Agent & Farm Intelligence System</p>
-          <div className="auth-tagline">
-            <span>Verified Rules</span>
-            <span className="dot">•</span>
-            <span>Live Open-Meteo Weather</span>
-            <span className="dot">•</span>
-            <span>Auditable Decisions</span>
-          </div>
+          <p className="auth-subtitle">Sign in or create your farm account</p>
         </div>
 
         {/* Mode Selector Tabs */}
@@ -222,7 +268,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
               setError('');
             }}
           >
-            Create New Account
+            Create Account
           </button>
         </div>
 
@@ -271,11 +317,38 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                 <span>Signing in...</span>
               ) : (
                 <>
-                  <span>Sign In to AgriGuide</span>
+                  <span>Sign In</span>
                   <ArrowRight size={17} />
                 </>
               )}
             </button>
+
+            {/* Quick Direct Access */}
+            <div style={{ marginTop: '20px', borderTop: '1px solid #e1e8e3', paddingTop: '16px' }}>
+              <button
+                type="button"
+                onClick={handleDemoSignIn}
+                disabled={loading || demoLoading}
+                style={{
+                  width: '100%',
+                  background: '#eaf5ee',
+                  border: '1px solid #bce2c7',
+                  color: '#1e5a32',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Sprout size={16} />
+                <span>1-Click Demo Shamba</span>
+              </button>
+            </div>
           </form>
         )}
 
@@ -513,12 +586,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             </button>
           </form>
         )}
-
-        {/* Footer Guarantee */}
-        <div className="auth-footer-badge">
-          <ShieldCheck size={16} />
-          <span>Auditable agricultural reasoning powered by Open-Meteo & agronomic rules</span>
-        </div>
       </div>
     </div>
   );

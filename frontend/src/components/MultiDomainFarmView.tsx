@@ -13,17 +13,28 @@ import {
   Send,
   Zap,
   Sliders,
-  Scale
+  Scale,
+  ArrowRight,
+  Clock,
+  Layers,
+  HelpCircle
 } from 'lucide-react';
 import { getHolisticStatus, proposeAction } from '../lib/api';
+import { TabType } from './Sidebar';
 
 interface MultiDomainFarmProps {
   field: any;
   state: any;
   decision?: any;
+  onNavigateTab?: (tab: TabType) => void;
 }
 
-export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, state, decision }) => {
+export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({
+  field,
+  state,
+  decision,
+  onNavigateTab
+}) => {
   const [holistic, setHolistic] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -84,23 +95,17 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
     return holistic?.domains?.[key] || holistic?.[key] || fallback;
   };
 
-  const domainCards = [
-    {
-      key: 'irrigation',
-      title: 'Irrigation Management',
-      icon: <Droplets size={22} style={{ color: '#2563eb' }} />,
-      color: '#2563eb',
-      data: getDomain('irrigation', {
-        recommendation: decision?.recommendation || state?.recommendation || 'WAIT',
-        confidence: decision?.confidence || state?.confidence || 0.88,
-        reason: decision?.reason || 'Advisory synchronized with active field root zone telemetry and weather forecast.',
-        rules: decision?.rules || ['R-CANONICAL-DECISION']
-      })
-    },
+  const canonicalRecommendation = decision?.recommendation || state?.recommendation || 'WAIT';
+  const canonicalConfidence = decision?.confidence || state?.confidence || 0.88;
+  const canonicalReason = decision?.reason || 'Advisory synchronized with active field root zone telemetry and weather forecast.';
+  const canonicalRules = decision?.rules || ['R-CANONICAL-DECISION'];
+
+  const secondaryDomains = [
     {
       key: 'planting',
       title: 'Planting Window',
-      icon: <Sprout size={22} style={{ color: '#16a34a' }} />,
+      category: 'Seasonal Planning',
+      icon: <Sprout size={20} style={{ color: '#16a34a' }} />,
       color: '#16a34a',
       data: getDomain('planting', {
         recommendation: 'MONITOR',
@@ -112,7 +117,8 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
     {
       key: 'fertilization',
       title: 'Nutrient & Leaching Protection',
-      icon: <FlaskConical size={22} style={{ color: '#7c3aed' }} />,
+      category: 'Crop Nutrition',
+      icon: <FlaskConical size={20} style={{ color: '#7c3aed' }} />,
       color: '#7c3aed',
       data: getDomain('fertilization', {
         recommendation: 'DELAY_APPLICATION',
@@ -124,19 +130,21 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
     {
       key: 'crop_health',
       title: 'Crop Vigor & Stress',
-      icon: <HeartPulse size={22} style={{ color: '#059669' }} />,
+      category: 'Canopy Monitoring',
+      icon: <HeartPulse size={20} style={{ color: '#059669' }} />,
       color: '#059669',
       data: getDomain('crop_health', {
         recommendation: 'HEALTHY',
         confidence: 0.88,
-        reason: 'Vegetative canopy healthy; no acute wilting or heat stress detected.',
+        reason: 'Vegetative canopy healthy; no acute wilting or thermal stress detected.',
         rules: ['R-CROP-VIGOR-GOOD']
       })
     },
     {
       key: 'weather_risk',
       title: 'Microclimate & Weather Risk',
-      icon: <CloudLightning size={22} style={{ color: '#d97706' }} />,
+      category: 'Atmospheric Risk',
+      icon: <CloudLightning size={20} style={{ color: '#d97706' }} />,
       color: '#d97706',
       data: getDomain('weather_risk', {
         recommendation: 'LOW_RISK',
@@ -148,7 +156,8 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
     {
       key: 'harvest',
       title: 'Harvest Readiness',
-      icon: <Wheat size={22} style={{ color: '#ca8a04' }} />,
+      category: 'Phenology Milestone',
+      icon: <Wheat size={20} style={{ color: '#ca8a04' }} />,
       color: '#ca8a04',
       data: getDomain('harvest', {
         recommendation: 'DELAY_HARVEST',
@@ -162,14 +171,14 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
   return (
     <div className="tab-container">
       {/* Header Banner */}
-      <div className="card-head" style={{ marginBottom: '1.5rem' }}>
+      <div className="card-head" style={{ marginBottom: '1.25rem' }}>
         <div>
-          <span className="pill">FARM OPERATIONS</span>
+          <span className="pill pill-mode">CANONICAL FARM OPERATIONS</span>
           <h2 style={{ fontSize: '1.4rem', marginTop: '4px' }}>
-            Comprehensive Farm Operations Suite
+            Farm Operations & Action Guardrails
           </h2>
           <p className="field-subtitle">
-            Coordinated field guidance across Irrigation, Planting, Fertilization, Crop Health, Weather Risks, and Harvest Readiness
+            Synchronized execution across Irrigation (Primary Active Decision Loop) alongside seasonal agronomic context.
           </p>
         </div>
         <button className="secondary" onClick={fetchHolisticData} disabled={loading}>
@@ -178,16 +187,163 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
         </button>
       </div>
 
-      {/* Domain Cards Grid */}
+      {/* 1. PRIMARY HERO OPERATION CARD: IRRIGATION MANAGEMENT */}
+      <section
+        style={{
+          background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f1fd 100%)',
+          border: '2px solid #93c5fd',
+          borderRadius: '14px',
+          padding: '24px',
+          marginBottom: '2rem',
+          boxShadow: '0 4px 16px rgba(37, 99, 235, 0.08)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  padding: '3px 9px',
+                  borderRadius: '6px'
+                }}
+              >
+                PRIMARY HERO OPERATION
+              </span>
+              <span style={{ fontSize: '12.5px', color: '#1e40af', fontWeight: 600 }}>
+                {field?.name || 'Selected Field'} · {field?.crop || 'Maize'} ({field?.growth_stage || 'Flowering'})
+              </span>
+            </div>
+            <h3 style={{ fontSize: '1.35rem', color: '#1e3a8a', margin: '4px 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Droplets size={24} style={{ color: '#2563eb' }} />
+              Irrigation Management & Root Zone Dispatch
+            </h3>
+            <p style={{ color: '#3b82f6', fontSize: '13px', margin: 0, maxWidth: '650px' }}>
+              This is AgriGuide's primary real-time decision loop, combining calibrated soil probe telemetry, Open-Meteo precipitation forecasts, and symbolic FAO-56 rules.
+            </p>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                background: canonicalRecommendation === 'IRRIGATE' ? '#dcfce7' : '#fef3c7',
+                color: canonicalRecommendation === 'IRRIGATE' ? '#166534' : '#92400e',
+                border: `1.5px solid ${canonicalRecommendation === 'IRRIGATE' ? '#86efac' : '#fde68a'}`,
+                padding: '6px 16px',
+                borderRadius: '8px',
+                fontSize: '18px',
+                fontWeight: 800,
+                letterSpacing: '0.04em'
+              }}
+            >
+              {canonicalRecommendation}
+            </span>
+            <div style={{ fontSize: '11.5px', color: '#1e40af', marginTop: '4px', fontWeight: 600 }}>
+              {Math.round(canonicalConfidence * 100)}% Decision Confidence
+            </div>
+          </div>
+        </div>
+
+        {/* Reason Banner */}
+        <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', margin: '16px 0' }}>
+          <b style={{ color: '#1e3a8a', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
+            Canonical Agronomic Rationale:
+          </b>
+          <p style={{ margin: 0, fontSize: '13.5px', color: '#1f2937', lineHeight: '1.45' }}>
+            {canonicalReason}
+          </p>
+          <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#4b5563' }}>
+            <strong>Governing Symbolic Rule:</strong> <code>{canonicalRules.join(', ')}</code>
+          </div>
+        </div>
+
+        {/* Telemetry & Estimated Operation Metrics */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+            <span style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700 }}>Soil Moisture</span>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#1e40af' }}>{state?.soil_moisture != null ? `${state.soil_moisture}%` : '17.5%'}</div>
+            <small style={{ color: '#4b5563' }}>Wilting Buffer: 18.0%</small>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+            <span style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700 }}>24h Rain Probability</span>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#0284c7' }}>{state?.rain_probability_24h != null ? `${state.rain_probability_24h}%` : '82%'}</div>
+            <small style={{ color: '#4b5563' }}>Open-Meteo Ensemble</small>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+            <span style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700 }}>Estimated Volume</span>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#166534' }}>~2,500 L</div>
+            <small style={{ color: '#4b5563' }}>Recommended Drip Runtime: 45 min</small>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+            <span style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700 }}>Water Reserves</span>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>{state?.water_availability || 'LIMITED'}</div>
+            <small style={{ color: '#4b5563' }}>Farm Tank Reservoir</small>
+          </div>
+        </div>
+
+        {/* Quick Navigation Links */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {onNavigateTab && (
+            <>
+              <button
+                type="button"
+                className="secondary"
+                style={{ background: '#ffffff', color: '#1e40af', borderColor: '#93c5fd', fontWeight: 600 }}
+                onClick={() => onNavigateTab('field-intel')}
+              >
+                Inspect "Why?" in Field Advisor →
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                style={{ background: '#ffffff', color: '#1e40af', borderColor: '#93c5fd', fontWeight: 600 }}
+                onClick={() => onNavigateTab('simulator')}
+              >
+                Simulate What-If Scenarios →
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                style={{ background: '#ffffff', color: '#1e40af', borderColor: '#93c5fd', fontWeight: 600 }}
+                onClick={() => onNavigateTab('audit')}
+              >
+                Audit Symbolic MeTTa Proof Trail →
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* 2. SECONDARY SECTION: AGRONOMIC CONTEXT & SEASONAL PLANNING */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Layers size={18} style={{ color: '#4b5563' }} />
+          <h3 style={{ fontSize: '1.15rem', color: '#374151', margin: 0 }}>
+            Seasonal Planning & Agronomic Context
+          </h3>
+        </div>
+        <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '4px 0 0 0' }}>
+          Secondary agronomic considerations evaluated concurrently to inform holistic crop management:
+        </p>
+      </div>
+
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1.25rem',
           marginBottom: '2rem'
         }}
       >
-        {domainCards.map((domain) => (
+        {secondaryDomains.map((domain) => (
           <div
             key={domain.key}
             className="field-card"
@@ -195,54 +351,58 @@ export const MultiDomainFarmView: React.FC<MultiDomainFarmProps> = ({ field, sta
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              borderTop: `4px solid ${domain.color}`
+              borderTop: `4px solid ${domain.color}`,
+              background: '#ffffff'
             }}
           >
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {domain.icon}
-                  <h4 style={{ margin: 0, fontSize: '15px' }}>{domain.title}</h4>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '14px', color: '#1f2937' }}>{domain.title}</h4>
+                    <span style={{ fontSize: '10.5px', color: '#6b7280' }}>{domain.category}</span>
+                  </div>
                 </div>
                 <span className="confidence-pill">
                   {Math.round((domain.data?.confidence || 0.85) * 100)}%
                 </span>
               </div>
 
-              <div style={{ margin: '10px 0' }}>
+              <div style={{ margin: '8px 0' }}>
                 <span
                   className="decision-badge"
                   style={{
                     background:
-                      domain.data?.recommendation === 'IRRIGATE' || domain.data?.recommendation === 'APPLY'
+                      domain.data?.recommendation === 'HEALTHY' || domain.data?.recommendation === 'LOW_RISK'
                         ? '#dcfce7'
                         : '#fef3c7',
                     color:
-                      domain.data?.recommendation === 'IRRIGATE' || domain.data?.recommendation === 'APPLY'
+                      domain.data?.recommendation === 'HEALTHY' || domain.data?.recommendation === 'LOW_RISK'
                         ? '#166534'
                         : '#92400e',
-                    fontSize: '13px'
+                    fontSize: '12px'
                   }}
                 >
                   {domain.data?.recommendation}
                 </span>
               </div>
 
-              <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.45', margin: '8px 0' }}>
+              <p style={{ fontSize: '12.5px', color: '#4b5563', lineHeight: '1.45', margin: '6px 0' }}>
                 {domain.data?.reason}
               </p>
             </div>
 
-            <div style={{ marginTop: '12px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+            <div style={{ marginTop: '10px', borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
               <small style={{ color: '#6b7280', fontSize: '11px', display: 'block' }}>
-                <strong>Governing Rules:</strong> {domain.data?.rules?.join(', ') || 'R-DOMAIN-GROUNDED'}
+                <strong>Governing Rule:</strong> {domain.data?.rules?.join(', ') || 'R-DOMAIN-GROUNDED'}
               </small>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Safety Policy & Physical Actuation Guardrails */}
+      {/* 3. SAFETY POLICY & PHYSICAL ACTUATION GUARDRAILS */}
       <div className="audit-section-card">
         <div className="card-head">
           <div>

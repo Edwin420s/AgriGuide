@@ -25,6 +25,8 @@ import {
 import { TabType } from './Sidebar';
 import { getLLMModels, getLLMStatus, switchLLMModel } from '../lib/api';
 import { getDynamicSuggestedQuestions } from '../lib/suggestedQuestions';
+import { FarmerJourneyLifecycle } from './FarmerJourneyLifecycle';
+import { ConfidenceBreakdown } from './ConfidenceBreakdown';
 
 const formatEvidenceValue = (val: any) => {
   if (val === null || val === undefined) return 'N/A';
@@ -193,6 +195,14 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
         </div>
       </div>
 
+      {/* Interactive Farmer Intelligence Journey Lifecycle */}
+      <FarmerJourneyLifecycle
+        currentStage="decide"
+        onNavigateTab={onNavigateTab}
+        onOpenObservation={() => onNavigateTab('record-obs')}
+        compact
+      />
+
       {/* Top Banner if multi-source conflicts detected */}
       {state?.has_conflicts && (
         <div className="alert-card warning">
@@ -346,9 +356,11 @@ export const FieldIntelligence: React.FC<FieldIntelligenceProps> = ({
                 <span className={`decision-badge ${getRecClass(currentDecision.recommendation)}`}>
                   {currentDecision.recommendation}
                 </span>
-                <span className="confidence-pill">
-                  {Math.round((currentDecision.confidence || 0) * 100)}% confidence
-                </span>
+                <ConfidenceBreakdown
+                  confidence={currentDecision.confidence || 0.88}
+                  state={state}
+                  decision={currentDecision}
+                />
               </div>
 
               <p className="decision-reason">{currentDecision.reason}</p>

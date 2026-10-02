@@ -18,6 +18,7 @@ import { WeatherClimateSensorsView } from './components/WeatherClimateSensorsVie
 import { AdminFarmersView } from './components/AdminFarmersView';
 import { UserProfileView } from './components/UserProfileView';
 import { AuthView } from './components/AuthView';
+import { LandingPage } from './components/LandingPage';
 import {
   getFields,
   getField,
@@ -65,6 +66,8 @@ function App() {
   });
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'register'>('signin');
   const [fields, setFields] = useState<any[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('');
   const [field, setField] = useState<any>(null);
@@ -247,6 +250,12 @@ function App() {
   }, [currentUser]);
 
   const handleAuthSuccess = (authData: AuthResponse) => {
+    setShowAuthModal(false);
+    if (authData.user?.role?.toUpperCase() === 'ADMIN') {
+      setActiveTab('admin-farmers');
+    } else {
+      setActiveTab('home');
+    }
     // Reset any loaded fields/state from previous session to avoid any data bleed
     setField(null);
     setState(null);
@@ -261,13 +270,18 @@ function App() {
     } else {
       reloadAllFields();
     }
-    setNotice(`Karibu sana, ${authData.user.name}! Your farm workspace is ready.`);
+    setNotice(
+      authData.user?.role?.toUpperCase() === 'ADMIN'
+        ? `Administrator session active: Welcome, ${authData.user.name}.`
+        : `Karibu sana, ${authData.user.name}! Your farm workspace is ready.`
+    );
     setTimeout(() => setNotice(''), 4500);
   };
 
   const handleLogout = () => {
     clearAuthToken();
     setCurrentUser(null);
+    setShowAuthModal(false);
     setFields([]);
     setSelectedFieldId('');
     setField(null);
@@ -363,7 +377,42 @@ function App() {
   const hasSuperseded = decisions.some((d) => d.supersedes_id);
 
   if (!currentUser) {
-    return <AuthView onAuthSuccess={handleAuthSuccess} />;
+    if (showAuthModal) {
+      return (
+        <AuthView
+          initialMode={authModalMode}
+          onAuthSuccess={handleAuthSuccess}
+          onBackToLanding={() => setShowAuthModal(false)}
+        />
+      );
+    }
+    return (
+      <LandingPage
+        onOpenAuth={(mode) => {
+          setAuthModalMode(mode || 'signin');
+          setShowAuthModal(true);
+        }}
+        onLaunchDemo={handleAuthSuccess}
+        currentUser={null}
+        onGoToDashboard={() => setActiveTab('home')}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (activeTab === 'landing') {
+    return (
+      <LandingPage
+        onOpenAuth={(mode) => {
+          setAuthModalMode(mode || 'signin');
+          setShowAuthModal(true);
+        }}
+        onLaunchDemo={handleAuthSuccess}
+        currentUser={currentUser}
+        onGoToDashboard={() => setActiveTab(currentUser.role?.toUpperCase() === 'ADMIN' ? 'admin-farmers' : 'home')}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -588,6 +637,7 @@ function App() {
             field={field}
             state={state}
             decision={decisions[0]}
+            onNavigateTab={setActiveTab}
           />
         )}
 
@@ -644,13 +694,33 @@ function App() {
         )}
 
         {activeTab === 'admin-farmers' && (
-          <AdminFarmersView
-            onSelectField={async (fieldId) => {
-              setSelectedFieldId(fieldId);
-              await loadField(fieldId);
-              setActiveTab('home');
-            }}
-          />
+          currentUser?.role?.toUpperCase() === 'ADMIN' ? (
+            <AdminFarmersView
+              onSelectField={async (fieldId) => {
+                setSelectedFieldId(fieldId);
+                await loadFieldData(fieldId);
+                setActiveTab('home');
+              }}
+            />
+          ) : (
+            <div className="view-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ background: '#fdf2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '30px', maxWidth: '520px', margin: '0 auto' }}>
+                <ShieldCheck size={48} color="#b91c1c" style={{ margin: '0 auto 16px auto', display: 'block' }} />
+                <h3 style={{ color: '#991b1b', margin: '0 0 10px 0' }}>Restricted Administrative Access</h3>
+                <p style={{ color: '#4a6252', fontSize: '13.5px', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+                  The Farmer Directory and cross-account shamba locations are strictly reserved for authorized system administrators. Your current session does not have administrative rights.
+                </p>
+                <button
+                  className="primary"
+                  onClick={() => setActiveTab('home')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Compass size={16} />
+                  <span>Return to My Shamba Overview</span>
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {activeTab === 'profile' && (

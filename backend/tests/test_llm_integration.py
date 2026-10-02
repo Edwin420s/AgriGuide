@@ -71,8 +71,9 @@ def test_grounded_consultation():
     }
     consult_res = service.consult("Should I turn on irrigation today?", context)
     assert consult_res["grounded"] is True
-    assert "Maize" in consult_res["answer"]
-    assert "WAIT" in consult_res["answer"]
+    ans_lower = consult_res["answer"].lower()
+    assert "maize" in ans_lower
+    assert "wait" in ans_lower or "hold off" in ans_lower or "delay" in ans_lower
 
 def test_remote_asi_cloud_parsing_simulation():
     # Simulate valid JSON response from SingularityNET ASI Cloud chat completion

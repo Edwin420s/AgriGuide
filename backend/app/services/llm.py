@@ -389,7 +389,7 @@ class LLMService:
                 f"- Water Reservoir: {water}\n"
                 f"- Current Recommended Action: {decision}\n"
                 f"- Agronomic Context: {reason}\n"
-                "Answer the farmer's question in 2-3 friendly, natural sentences."
+                f"Answer the farmer's question in 2-3 friendly, natural sentences. Explicitly reference the crop ({crop}) and the recommended decision ({decision})."
             )
 
             try:

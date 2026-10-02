@@ -75,7 +75,7 @@ export const ScientificBenchmarkView: React.FC = () => {
             <div>
               <h3>Active Model Fleet</h3>
               <p className="big-score">5 Models</p>
-              <small>SingularityNET ASI Cloud</small>
+              <small>Decentralized ASI / MeTTa Cloud</small>
             </div>
           </div>
         </div>

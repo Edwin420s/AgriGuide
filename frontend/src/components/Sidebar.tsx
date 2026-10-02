@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export type TabType =
+  | 'landing'
   | 'home'
   | 'my-farm'
   | 'field-intel'
@@ -57,7 +58,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <div
+        className="brand"
+        onClick={() => setActiveTab('landing')}
+        style={{ cursor: 'pointer' }}
+        title="View AgriGuide Overview & Landing Page"
+      >
         <div className="logo">
           <Sprout size={24} />
         </div>
@@ -68,14 +74,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="nav-menu">
-        <div className="nav-section-title">MY FARM</div>
+        <button
+          className={`nav-item ${activeTab === 'landing' ? 'active' : ''}`}
+          onClick={() => setActiveTab('landing')}
+          style={{ marginBottom: '6px', borderBottom: '1px solid #1f3729', paddingBottom: '12px' }}
+        >
+          <Sprout size={18} />
+          <span>Project Overview</span>
+        </button>
+
+        <div className="nav-section-title">🌱 FARM</div>
 
         <button
           className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
           onClick={() => setActiveTab('home')}
         >
           <Compass size={18} />
-          <span>Home Overview</span>
+          <span>Home</span>
         </button>
 
         <button
@@ -83,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveTab('my-farm')}
         >
           <MapPin size={18} />
-          <span>Farms & Fields</span>
+          <span>My Farm & Fields</span>
         </button>
 
         <button
@@ -94,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Record Observation</span>
         </button>
 
-        <div className="nav-section-title">FIELD INTELLIGENCE</div>
+        <div className="nav-section-title">🧠 INTELLIGENCE</div>
 
         <button
           className={`nav-item ${activeTab === 'field-intel' ? 'active' : ''}`}
@@ -125,17 +140,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveTab('simulator')}
         >
           <Sliders size={18} />
-          <span>What-If Simulator</span>
+          <span>What-If</span>
         </button>
 
-        <div className="nav-section-title">DECISIONS & LEARNING</div>
+        <div className="nav-section-title">📋 DECISIONS</div>
 
         <button
           className={`nav-item ${activeTab === 'decision-diff' ? 'active' : ''}`}
           onClick={() => setActiveTab('decision-diff')}
         >
           <Scale size={18} />
-          <span>Decision History & Diff</span>
+          <span>Decision History</span>
           {hasSuperseded && <span className="diff-badge">Updated</span>}
         </button>
 
@@ -144,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveTab('learning')}
         >
           <TrendingUp size={18} />
-          <span>Outcomes & Calibration</span>
+          <span>Outcomes & Learning</span>
         </button>
 
         {/* Collapsible Expert Tools */}
@@ -161,8 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Click to toggle expert inspection tools"
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <Layers size={13} />
-            <span>EXPERT & AUDIT TOOLS</span>
+            <span>🔬 EXPERT</span>
           </span>
           <span style={{ fontSize: '11px', color: '#688d75', fontWeight: 700 }}>
             {expertOpen ? '▾' : '▸'}
@@ -176,7 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setActiveTab('audit')}
             >
               <GitBranch size={17} />
-              <span>Decision Audit Trail</span>
+              <span>Decision Audit</span>
             </button>
 
             <button
@@ -184,7 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setActiveTab('rules')}
             >
               <Layers size={17} />
-              <span>Custom Field Rules</span>
+              <span>Custom Rules</span>
             </button>
 
             <button
@@ -192,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setActiveTab('knowledge-graph')}
             >
               <Network size={17} />
-              <span>Digital Twin & Graph</span>
+              <span>Digital Twin</span>
             </button>
 
             <button
@@ -200,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setActiveTab('scientific-benchmark')}
             >
               <Award size={17} />
-              <span>Verification & Benchmark</span>
+              <span>System Verification</span>
             </button>
           </div>
         )}

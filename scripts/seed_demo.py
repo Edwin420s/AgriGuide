@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT_DIR / "backend"))
 
 from datetime import datetime, timedelta, timezone
 from app.db.session import Base, engine, SessionLocal
+from app.core.security import hash_password
 from app.models.domain import (
     User, Farm, Field, Sensor, Evidence, Belief, CognitiveRun,
     Decision, DecisionReasoning, Outcome, LearningEvent, SourceReliability,
@@ -32,18 +33,29 @@ def seed():
 
     print("Seeding AgriGuide demo data...")
 
-    # 1. User & Farm
-    farmer = User(
-        name="Edwin",
+    # 1. System Admin User (Edwin)
+    admin_user = User(
+        name="Edwin (Admin)",
         email="eduedywn5@gmail.com",
+        password_hash=hash_password("AdminPassword123!"),
         role="ADMIN",
         language="en"
     )
-    db.add(farmer)
+    db.add(admin_user)
+
+    # 2. Public Demo Farmer (Non-admin)
+    demo_farmer = User(
+        name="Demo Farmer (Kirinyaga Shamba)",
+        email="demo.farmer@agriguide.io",
+        password_hash=hash_password("DemoPassword123!"),
+        role="FARMER",
+        language="en"
+    )
+    db.add(demo_farmer)
     db.flush()
 
     farm = Farm(
-        owner_id=farmer.id,
+        owner_id=demo_farmer.id,
         name="Kilimo Bora Demonstration Farm",
         location_name="Kutus, Kirinyaga County, Kenya",
         latitude=-0.528,
@@ -582,6 +594,144 @@ def seed():
         created_at=now - timedelta(minutes=12)
     )
     db.add_all([audit_1, audit_2, audit_3])
+
+    # --- 8. Additional Registered Farmers across Kenya (for Admin Multi-Farm Management) ---
+    extra_farmers = [
+        {
+            "name": "Wanjiku Mwangi",
+            "email": "wanjiku.mwangi@kilimo.ke",
+            "farm_name": "Mwea Green Harvest Shamba",
+            "location": "Mwea, Kirinyaga County, Kenya",
+            "lat": -0.680,
+            "lon": 37.350,
+            "area": 3.2,
+            "water": "RELIABLE",
+            "fields": [
+                {"name": "Paddy Rice Unit 01", "crop": "rice", "stage": "vegetative", "soil": "clay loam", "area": 2.0},
+                {"name": "Greenhouse Tomatoes", "crop": "tomatoes", "stage": "flowering", "soil": "sandy loam", "area": 1.2}
+            ]
+        },
+        {
+            "name": "Kiprono Cheruiyot",
+            "email": "kiprono.cheruiyot@eldoretgrains.ke",
+            "farm_name": "Uasin Gishu Grain Haven",
+            "location": "Eldoret, Uasin Gishu County, Kenya",
+            "lat": 0.514,
+            "lon": 35.269,
+            "area": 12.0,
+            "water": "LIMITED",
+            "fields": [
+                {"name": "East Ridge Maize Plot", "crop": "maize", "stage": "flowering", "soil": "loam", "area": 8.0},
+                {"name": "Plateau Winter Wheat", "crop": "wheat", "stage": "tillering", "soil": "clay loam", "area": 4.0}
+            ]
+        },
+        {
+            "name": "Amina Hassan",
+            "email": "amina.hassan@kilifiorganics.ke",
+            "farm_name": "Kilifi Coastal Oasis",
+            "location": "Kilifi, Kilifi County, Kenya",
+            "lat": -3.630,
+            "lon": 39.850,
+            "area": 5.5,
+            "water": "SCARCE",
+            "fields": [
+                {"name": "Coastal Cassava Terraces", "crop": "cassava", "stage": "root_bulking", "soil": "sandy loam", "area": 3.5},
+                {"name": "Organic Cashew Orchard", "crop": "cashew", "stage": "vegetative", "soil": "sand", "area": 2.0}
+            ]
+        },
+        {
+            "name": "Juma Omondi",
+            "email": "juma.omondi@lakebasin.ke",
+            "farm_name": "Kisumu Lowland Terraces",
+            "location": "Kombewa, Kisumu County, Kenya",
+            "lat": -0.102,
+            "lon": 34.520,
+            "area": 2.8,
+            "water": "MODERATE",
+            "fields": [
+                {"name": "Lake Lowland Sorghum", "crop": "sorghum", "stage": "heading", "soil": "loam", "area": 1.8},
+                {"name": "Orange Sweet Potato Ridges", "crop": "sweet potatoes", "stage": "vegetative", "soil": "sandy loam", "area": 1.0}
+            ]
+        }
+    ]
+
+    for f_info in extra_farmers:
+        u_extra = User(
+            name=f_info["name"],
+            email=f_info["email"],
+            password_hash=hash_password("FarmerPass123!"),
+            role="FARMER",
+            language="en"
+        )
+        db.add(u_extra)
+        db.flush()
+
+        fm_extra = Farm(
+            owner_id=u_extra.id,
+            name=f_info["farm_name"],
+            location_name=f_info["location"],
+            latitude=f_info["lat"],
+            longitude=f_info["lon"],
+            area=f_info["area"],
+            water_availability=f_info["water"]
+        )
+        db.add(fm_extra)
+        db.flush()
+
+        for fld_info in f_info["fields"]:
+            fld_obj = Field(
+                farm_id=fm_extra.id,
+                name=fld_info["name"],
+                area=fld_info["area"],
+                soil_type=fld_info["soil"],
+                irrigation_method="furrow" if "Rice" in fld_info["name"] else "drip",
+                crop=fld_info["crop"],
+                growth_stage=fld_info["stage"],
+                planting_date=now - timedelta(days=40),
+                status="ACTIVE"
+            )
+            db.add(fld_obj)
+            db.flush()
+
+            # Add initial telemetry and decision
+            ev_moist = Evidence(
+                field_id=fld_obj.id,
+                type="TELEMETRY",
+                source_type="SENSOR",
+                source_id=f"sensor-{fld_obj.id[:6]}",
+                subject=fld_obj.id,
+                predicate="soil_moisture",
+                value={"value": 18.0 if "Maize" in fld_info["name"] else 26.5},
+                unit="%",
+                confidence=0.92,
+                observed_at=now - timedelta(hours=1),
+                status="ACTIVE"
+            )
+            db.add(ev_moist)
+
+            run_extra = CognitiveRun(
+                field_id=fld_obj.id,
+                trigger="SCHEDULED_CYCLE",
+                goal="baseline_field_advisory",
+                status="COMPLETED",
+                world_state_version=1,
+                started_at=now - timedelta(minutes=45),
+                completed_at=now - timedelta(minutes=45) + timedelta(seconds=1)
+            )
+            db.add(run_extra)
+            db.flush()
+
+            dec_extra = Decision(
+                field_id=fld_obj.id,
+                cognitive_run_id=run_extra.id,
+                recommendation="IRRIGATE" if "Maize" in fld_info["name"] else "WAIT",
+                confidence=0.91,
+                reason=f"Automated baseline advisory for {fld_info['crop']} in {f_info['location']}.",
+                supersedes_id=None,
+                status="ISSUED",
+                created_at=now - timedelta(minutes=45)
+            )
+            db.add(dec_extra)
 
     farm_name = farm.name
     field_a_name = field_a.name

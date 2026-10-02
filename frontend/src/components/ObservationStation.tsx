@@ -76,6 +76,16 @@ export const ObservationStation: React.FC<ObservationStationProps> = ({
   // 5. Freeform Natural Observation
   const [naturalNote, setNaturalNote] = useState('');
 
+  const quickChips = [
+    { id: 'rain', icon: '🌧️', label: "It's raining now", text: "Rain is currently falling on the field, surface saturated.", tab: 'freeform' as const },
+    { id: 'dry', icon: '💧', label: 'Soil is very dry (<15%)', text: "Topsoil feels very dry and powdery down to 10cm, moisture deficit.", tab: 'soil' as const, moisture: '11.5' },
+    { id: 'hot', icon: '🌡️', label: 'Unusually hot (>30°C)', text: "Unusually hot midday temperature exceeding 31°C with intense sun.", tab: 'temp' as const, temp: '32.0' },
+    { id: 'wilt', icon: '🌱', label: 'Plants visibly wilting', text: "Plants are visibly wilting under heat, leaves curling in root zone.", tab: 'crop' as const },
+    { id: 'healthy', icon: '🌿', label: 'Crops look healthy', text: "Crops appear healthy and turgid with no signs of water stress.", tab: 'freeform' as const },
+    { id: 'pests', icon: '🐛', label: 'Pest damage spotted', text: "Pest damage and foliar chewing spotted on crop canopy.", tab: 'freeform' as const },
+    { id: 'clouds', icon: '☁️', label: 'Dark storm clouds', text: "Dark convective storm clouds gathering overhead, imminent rainfall expected.", tab: 'freeform' as const }
+  ];
+
   const submitObservation = async (messageText: string) => {
     if (!field?.id || !messageText.trim()) return;
     setSubmitting(true);
@@ -142,6 +152,14 @@ export const ObservationStation: React.FC<ObservationStationProps> = ({
     }
   };
 
+  const handleQuickChip = async (chip: typeof quickChips[0]) => {
+    setActiveTab(chip.tab);
+    if (chip.moisture) setSoilMoisturePct(chip.moisture);
+    if (chip.temp) setTempVal(chip.temp);
+    setNaturalNote(chip.text);
+    await submitObservation(chip.text);
+  };
+
   return (
     <div className="tab-container observation-station-view">
       {/* Header */}
@@ -166,6 +184,64 @@ export const ObservationStation: React.FC<ObservationStationProps> = ({
           </div>
         </div>
       </section>
+
+      {/* 1-Tap Quick Field Observations Shelf */}
+      <div
+        style={{
+          background: '#ffffff',
+          border: '1.5px solid #c7e5d0',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '1.25rem',
+          boxShadow: '0 2px 10px rgba(30, 90, 50, 0.05)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, background: '#e3f2e8', color: '#165e32', padding: '3px 8px', borderRadius: '6px' }}>
+              ⚡ 1-TAP RAPID OBSERVATIONS
+            </span>
+            <strong style={{ fontSize: '13.5px', color: '#1a3a25' }}>What are you observing in this field right now?</strong>
+          </div>
+          <span style={{ fontSize: '12px', color: '#557563' }}>Tap any condition below to log & update advisory instantly:</span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {quickChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => handleQuickChip(chip)}
+              disabled={submitting || globalBusy}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#f7faf8',
+                border: '1px solid #bfdec8',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                color: '#1a3826',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eaf5ee';
+                e.currentTarget.style.borderColor = '#86c599';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f7faf8';
+                e.currentTarget.style.borderColor = '#bfdec8';
+              }}
+            >
+              <span>{chip.icon}</span>
+              <span>{chip.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {feedback && (
         <div className={`status-banner ${feedback.type}`}>

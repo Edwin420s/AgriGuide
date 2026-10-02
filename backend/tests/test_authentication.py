@@ -61,14 +61,15 @@ def test_demo_login_flow():
     assert "access_token" in data
     assert "user" in data
     assert data["token_type"] == "bearer"
-    assert data["user"]["email"] == "eduedywn5@gmail.com"
-    assert data["user"]["role"] == "ADMIN"
-    assert "Edwin" in data["user"]["name"]
+    assert data["user"]["email"] == "demo.farmer@agriguide.io"
+    assert data["user"]["role"] == "FARMER"
+    assert "Demo Farmer" in data["user"]["name"]
 
 def test_admin_farmer_profiles_directory():
     # Edwin Admin Login
-    r_demo = client.post("/api/auth/demo-login")
-    admin_token = r_demo.json()["access_token"]
+    r_admin_login = client.post("/api/auth/admin-login")
+    assert r_admin_login.status_code == 200
+    admin_token = r_admin_login.json()["access_token"]
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
     # Admin accesses /api/admin/farmers

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { TabType } from './Sidebar';
 import { getDynamicSuggestedQuestions } from '../lib/suggestedQuestions';
+import { FarmerJourneyLifecycle } from './FarmerJourneyLifecycle';
+import { ConfidenceBreakdown } from './ConfidenceBreakdown';
 
 export interface ConsultMessage {
   id: string;
@@ -179,7 +181,14 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
         </div>
       </section>
 
-      {/* 2. Main Grid: Today's Decision & Field Status */}
+      {/* 2. Interactive Farmer Intelligence Journey Lifecycle */}
+      <FarmerJourneyLifecycle
+        currentStage="decide"
+        onNavigateTab={onNavigateTab}
+        onOpenObservation={() => onOpenObservation()}
+      />
+
+      {/* 3. Main Grid: Today's Decision & Field Status */}
       <section className="overview-main-grid">
         {/* Today's Decision Card */}
         <div className="decision-hero-card">
@@ -203,9 +212,11 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
               <span className={`decision-main-badge ${getDecisionBadgeClass(currentDecision?.recommendation)}`}>
                 {currentDecision?.recommendation || 'EVALUATING'}
               </span>
-              <span className="decision-conf-tag">
-                {Math.round((currentDecision?.confidence || 0.85) * 100)}% Confidence
-              </span>
+              <ConfidenceBreakdown
+                confidence={currentDecision?.confidence || 0.85}
+                state={state}
+                decision={currentDecision}
+              />
             </div>
 
             <p className="decision-main-reason">

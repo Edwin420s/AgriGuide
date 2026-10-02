@@ -119,6 +119,12 @@ export const simulateWhatIf = (fieldId: string, params: any) =>
     body: JSON.stringify(params)
   });
 
+export const simulatePublic = (params: any) =>
+  api<any>('/simulate/public', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  });
+
 // Learning, Outcomes & Source Reliability
 export const outcome = (id: string, data: any) =>
   api<any>(`/decisions/${id}/outcomes`, {
@@ -129,7 +135,7 @@ export const learning = (id: string) => api<any[]>(`/fields/${id}/learning`);
 export const getSourceReliability = () => api<any[]>('/sources/reliability');
 export const getTimeline = (id: string) => api<any[]>(`/fields/${id}/timeline`);
 
-// SingularityNET / ASI Cloud Neural-Symbolic Language Layer
+// Neural-Symbolic Language Layer
 export const getLLMStatus = () => api<any>('/llm/status');
 export const getLLMModels = () => api<{ active_model: string; models: any[]; api_configured: boolean }>('/llm/models');
 export const switchLLMModel = (model: string) =>
@@ -212,6 +218,11 @@ export const loginUser = (payload: LoginPayload) =>
 
 export const demoLogin = () =>
   api<AuthResponse>('/auth/demo-login', {
+    method: 'POST'
+  });
+
+export const adminLogin = () =>
+  api<AuthResponse>('/auth/admin-login', {
     method: 'POST'
   });
 
