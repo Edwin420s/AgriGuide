@@ -173,14 +173,35 @@ AgriGuide directly scales the foundational concepts and programming challenges t
 
 ---
 
+## Comprehensive Technical Documentation Library
+
+Detailed engineering specifications, formal proofs, agronomic calibrations, and operational runbooks are available in the `docs/` directory:
+
+| Specification Document | Focus Area and Description |
+| :--- | :--- |
+| `docs/demo.md` | Scripted 3-Minute Hackathon Demonstration walkthrough with second-by-second narrative |
+| `docs/omega-integration.md` | Omega Cognitive Architecture, stateful memory context, and goal contracts |
+| `docs/architecture.md` | High-level neural-symbolic system design and dataflow pipelines |
+| `docs/API_SPECIFICATION.md` | Full OpenAPI REST endpoint specifications, request payloads, and status codes |
+| `docs/METTA_ONTOLOGY_REFERENCE.md` | OpenCog MeTTa S-expression schemas, Atomspace ontology, and rule definitions |
+| `docs/VALVE_SAFETY_AND_ACTUATION_POLICIES.md` | Hardware safety gatekeepers, watchdog timers, and water hammer mitigation |
+| `docs/SOIL_HYDRAULICS_AND_PHYSICAL_MODELS.md` | van Genuchten water retention equations, AWC, and depletion factors |
+| `docs/SWAHILI_AGRICULTURAL_TAXONOMY.md` | East African botanical taxonomy, Swahili crop aliases, and soil classifications |
+| `docs/INDEX_INSURANCE_ORACLE_SPEC.md` | Parametric drought and flood index insurance payout trigger oracle design |
+| `docs/KENYA_WATER_RESOURCE_AUTHORITY_COMPLIANCE.md` | Kenya Water Act 2016 abstraction permits and low-flow environmental cutoffs |
+| `docs/SYSTEM_DISASTER_RECOVERY_RUNBOOK.md` | RTO/RPO objectives, database point-in-time recovery, and multi-cloud failover |
+| `docs/ENTERPRISE_API_INTEGRATION_GUIDE.md` | Agribusiness enterprise integration, HMAC authentication, and webhooks |
+
+---
+
 ## Automated Verification and Benchmark Suite
 
 The implementation is verified against an extensive automated test suite and formal scientific benchmarks:
 
 ```bash
-# Automated Test Suite (66 of 66 tests passing)
-pytest backend/tests/ -q
-# Output: 66 passed in 26.68s (100% success rate)
+# Automated Test Suite (97 of 97 tests passing)
+python3 -m pytest backend/tests/ -q
+# Output: 97 passed in 70.51s (100% success rate)
 
 # BASIX MeTTa Curriculum and 10-Point Scientific Benchmark
 python3 scripts/verify_metta_curriculum.py
@@ -230,7 +251,7 @@ cd AgriGuide
 pip install -r backend/requirements.txt
 
 # Start backend server
-python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+python3 -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000
 ```
 Backend API will be accessible at http://localhost:8000 with interactive OpenAPI documentation at http://localhost:8000/docs.
 

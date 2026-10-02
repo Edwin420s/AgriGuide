@@ -4,19 +4,26 @@ This script walks through the complete end-to-end demonstration for the Singular
 
 ---
 
-## Pre-Flight Check (30 Seconds Before Demo)
+## Live Deployment Access (Instant 1-Click Evaluation)
+
+Judges can evaluate the demonstration immediately on the live cloud deployment with zero setup:
+- **Live Frontend**: https://agriguide-zeta.vercel.app/
+- **Live Backend & OpenAPI**: https://agriguide-backend-1rtz.onrender.com/docs
+- **1-Click Evaluation**: Click **"Try a Shamba (1-Click Demo)"** on the landing page for instant authenticated access to pre-loaded Kenyan field states.
+
+---
+
+## Local Development Pre-Flight (Alternative)
 
 ```bash
 # 1. Seed demo database with pre-loaded fields, decisions, and history:
 python3 scripts/seed_demo.py
 
 # 2. Start Backend:
-cd backend
-uvicorn app.main:app --reload --port 8000
+python3 -m uvicorn app.main:app --app-dir backend --port 8000
 
 # 3. Start Frontend (in a second terminal):
-cd frontend
-npm run dev
+cd frontend && npm run dev
 
 # 4. Open in browser:
 http://localhost:5173
