@@ -161,8 +161,8 @@ class SensorAnomalyDetector:
                 )
 
         # 3. Flatline / Stuck Sensor Check
-        if len(history) >= 5:
-            recent = history[-5:] + [current]
+        if len(history) >= 4:
+            recent = history[-4:] + [current]
             mean = sum(recent) / len(recent)
             variance = sum((x - mean) ** 2 for x in recent) / len(recent)
             std_dev = math.sqrt(variance)
