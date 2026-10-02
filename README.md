@@ -4,6 +4,12 @@
 **Builder**: Nexora AI (Edwin)  
 **Hackathon**: SingularityNET / BASIX Omniversity Hackathon (2026)  
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FEdwin420s%2FAgriGuide&root-directory=frontend&env=VITE_API_URL&envDescription=Backend%20API%20URL%20(e.g.%20https%3A%2F%2Fagriguide-backend.onrender.com%2Fapi))
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Edwin420s/AgriGuide)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template?template=https%3A%2F%2Fgithub.com%2FEdwin420s%2FAgriGuide)
+
+📖 **[Read the Full Cloud Deployment Guide](DEPLOYMENT.md)** — Step-by-step instructions for Vercel, Render, and Railway.
+
 AgriGuide is an adaptive agricultural decision-intelligence agent built around a persistent **neural-symbolic cognitive loop**. It solves a vital problem for smallholder farmers: **"How can an AI system make a critical farming recommendation that a farmer can actually understand, question, verify, and teach?"**
 
 ---

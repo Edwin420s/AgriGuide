@@ -39,25 +39,26 @@ def test_heuristic_observation_parsing():
 
 def test_explain_decision_synthesis():
     service = LLMService()
-    explanation = service.explain_decision(
-        recommendation="WAIT",
-        confidence=0.88,
-        reason="Expected rainfall within 24 hours makes irrigation wasteful.",
-        counterfactuals={
-            "if_wait": {"efficiency": "HIGH", "risk": "LOW"},
-            "if_irrigate": {"efficiency": "POOR", "risk": "HIGH_RUNOFF_RISK"}
-        },
-        supersedes_diff={
-            "previous_recommendation": "IRRIGATE"
-        },
-        crop="Maize",
-        soil_moisture=18.0,
-        rain_prob=75.0,
-        water_avail="LIMITED"
-    )
-    assert "agriguide advises wait" in explanation.lower()
-    assert "supersedes previous advice" in explanation.lower()
-    assert "runoff" in explanation.lower()
+    with patch.object(service, "_call_chat_completion", return_value=None):
+        explanation = service.explain_decision(
+            recommendation="WAIT",
+            confidence=0.88,
+            reason="Expected rainfall within 24 hours makes irrigation wasteful.",
+            counterfactuals={
+                "if_wait": {"efficiency": "HIGH", "risk": "LOW"},
+                "if_irrigate": {"efficiency": "POOR", "risk": "HIGH_RUNOFF_RISK"}
+            },
+            supersedes_diff={
+                "previous_recommendation": "IRRIGATE"
+            },
+            crop="Maize",
+            soil_moisture=18.0,
+            rain_prob=75.0,
+            water_avail="LIMITED"
+        )
+        assert "agriguide advises wait" in explanation.lower()
+        assert "supersedes previous advice" in explanation.lower()
+        assert "runoff" in explanation.lower()
 
 def test_grounded_consultation():
     service = LLMService()

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: agriguide-backend
+    runtime: docker
+    dockerfilePath: Dockerfile.backend
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: ASI_CLOUD_URL
+        value: "https://llm.c.singularitynet.io/v1"
+      - key: ASI_CLOUD_MODEL
+        value: "minimax/minimax-m3"
+      - key: ASI_CLOUD_KEY
+        sync: false
