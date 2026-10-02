@@ -54,6 +54,6 @@ app.add_middleware(
 app.include_router(router, prefix=settings.api_prefix)
 app.include_router(router)  # Also mount without prefix to support frontend configurations targeting domain root
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"name":"AgriGuide","version":"1.0.0","status":"running"}
