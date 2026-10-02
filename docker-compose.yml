@@ -8,10 +8,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./agriguide.db
+      - DATABASE_URL=sqlite:////app/data/agriguide.db
       - ENVIRONMENT=production
+      - ASI_CLOUD_KEY=${ASI_CLOUD_KEY:-}
+      - ASI_CLOUD_URL=${ASI_CLOUD_URL:-https://llm.c.singularitynet.io/v1}
+      - ASI_CLOUD_MODEL=${ASI_CLOUD_MODEL:-minimax/minimax-m3}
     volumes:
       - backend_data:/app/data
+    restart: unless-stopped
 
   frontend:
     build:
@@ -21,6 +25,7 @@ services:
       - "80:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
 volumes:
   backend_data:

@@ -23,7 +23,6 @@ ENV PYTHONUNBUFFERED=1
 COPY backend/app ./app
 COPY metta ./metta
 COPY scripts ./scripts
-COPY backend/alembic.ini .
 
 EXPOSE 8000
 

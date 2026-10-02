@@ -18,6 +18,17 @@ with engine.connect() as conn:
         except Exception:
             pass
 
+try:
+    from app.db.session import SessionLocal
+    from app.models.domain import Farm
+    _db = SessionLocal()
+    if _db.query(Farm).count() == 0:
+        from scripts.seed_demo import seed
+        seed(recreate_tables=False)
+    _db.close()
+except Exception:
+    pass
+
 app = FastAPI(title=settings.app_name, version="1.0.0", description="Adaptive neural-symbolic agricultural decision intelligence")
 # Collect all allowed origins
 cors_origins_list = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]

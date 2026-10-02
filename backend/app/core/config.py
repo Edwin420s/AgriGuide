@@ -1,7 +1,14 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_here = Path(__file__).resolve()
+if len(_here.parents) > 2 and (_here.parents[2] / "metta").exists():
+    PROJECT_ROOT = _here.parents[2]
+elif len(_here.parents) > 3 and (_here.parents[3] / "metta").exists():
+    PROJECT_ROOT = _here.parents[3]
+else:
+    PROJECT_ROOT = _here.parents[3] if len(_here.parents) > 3 else _here.parents[2]
+
 DEFAULT_DB_PATH = PROJECT_ROOT / "agriguide.db"
 DEFAULT_METTA_RULES = PROJECT_ROOT / "metta" / "irrigation" / "rules.metta"
 DEFAULT_METTA_KNOWLEDGE = PROJECT_ROOT / "metta" / "knowledge" / "agriculture.metta"
@@ -35,9 +42,13 @@ class Settings(BaseSettings):
     @property
     def resolved_database_url(self) -> str:
         if self.database_url.startswith("sqlite:////"):
+            db_path = Path(self.database_url[10:])
+            db_path.parent.mkdir(parents=True, exist_ok=True)
             return self.database_url
         if self.database_url.startswith("sqlite:///./") or self.database_url == "sqlite:///agriguide.db":
-            return f"sqlite:///{PROJECT_ROOT / 'agriguide.db'}"
+            db_path = PROJECT_ROOT / "agriguide.db"
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            return f"sqlite:///{db_path}"
         return self.database_url
 
 settings = Settings()

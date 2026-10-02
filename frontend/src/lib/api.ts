@@ -1,4 +1,14 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const getApiBase = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '5174')) {
+    return 'http://localhost:8000/api';
+  }
+  return '/api';
+};
+
+const API = getApiBase();
 
 export const getAuthToken = (): string | null => {
   try {

@@ -23,9 +23,10 @@ from app.models.domain import (
     AuditEvent, FieldRule
 )
 
-def seed():
-    # Recreate tables to ensure clean schema
-    Base.metadata.drop_all(bind=engine)
+def seed(recreate_tables: bool = True):
+    # Recreate tables to ensure clean schema if requested
+    if recreate_tables:
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
