@@ -52,6 +52,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router, prefix=settings.api_prefix)
+app.include_router(router)  # Also mount without prefix to support frontend configurations targeting domain root
 
 @app.get("/")
 def root():

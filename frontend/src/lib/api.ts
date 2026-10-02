@@ -1,6 +1,10 @@
 const getApiBase = (): string => {
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    let base = String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '');
+    if (!base.endsWith('/api')) {
+      base = `${base}/api`;
+    }
+    return base;
   }
   if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '5174')) {
     return 'http://localhost:8000/api';

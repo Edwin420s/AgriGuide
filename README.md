@@ -1,16 +1,43 @@
-# AgriGuide — Explainable Agricultural Decision Agent
+# 🌾 AgriGuide — Explainable Agricultural Decision Agent
 
 **Track**: Solo Track $\rightarrow$ Omega Track: *One Agent Producing an Auditable Decision*  
-**Builder**: Nexora AI (Edwin)  
+**Builder**: Edwin Mwiti (Nexora AI)  
 **Hackathon**: SingularityNET / BASIX Omniversity Hackathon (2026)  
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FEdwin420s%2FAgriGuide&root-directory=frontend&env=VITE_API_URL&envDescription=Backend%20API%20URL%20(e.g.%20https%3A%2F%2Fagriguide-backend.onrender.com%2Fapi))
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Edwin420s/AgriGuide)
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template?template=https%3A%2F%2Fgithub.com%2FEdwin420s%2FAgriGuide)
+---
 
-📖 **[Read the Full Cloud Deployment Guide](DEPLOYMENT.md)** — Step-by-step instructions for Vercel, Render, and Railway.
+### 🌐 Live Deployments & Verification
 
-AgriGuide is an adaptive agricultural decision-intelligence agent built around a persistent **neural-symbolic cognitive loop**. It solves a vital problem for smallholder farmers: **"How can an AI system make a critical farming recommendation that a farmer can actually understand, question, verify, and teach?"**
+| Service | Platform | Live URL | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Web App** | **Vercel** | [https://agriguide-zeta.vercel.app](https://agriguide-zeta.vercel.app) | 🟢 **Live & Operational** |
+| **Backend API & Swagger** | **Render** | [https://agriguide-backend-1rtz.onrender.com/docs](https://agriguide-backend-1rtz.onrender.com/docs) | 🟢 **Live & Operational** |
+| **API Health Endpoint** | **Render** | [https://agriguide-backend-1rtz.onrender.com/](https://agriguide-backend-1rtz.onrender.com/) | 🟢 **200 OK** |
+| **GitHub Repository** | **GitHub** | [https://github.com/Edwin420s/AgriGuide](https://github.com/Edwin420s/AgriGuide) | 🟢 **Public & Auditable** |
+
+---
+
+### 🔑 Instant Demo & Testing Credentials
+
+| Role | Email | Password | Access Type |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `eduedywn5@gmail.com` | `AdminPassword123!` | Full multi-farmer fleet management, sensor diagnostics, and audit inspector |
+| **Demo Farmer** | `demo.farmer@agriguide.io` | `DemoPassword123!` | Kirinyaga maize & French beans field twins, live weather, and MeTTa decision engine |
+
+> **Tip**: You can use the **"⚡ Admin Quick Login"** or **"⚡ Demo Farmer Quick Login"** buttons directly on the login page to authenticate instantly with one click.
+
+---
+
+## 💡 Executive Summary
+
+Smallholder farmers cannot afford ungrounded black-box recommendations. When a farmer asks *"Should I irrigate today?"*, an ordinary LLM might hallucinate a plausible answer, but it cannot guarantee water conservation, respect physical soil dynamics, or provide a deterministic mathematical proof.
+
+**AgriGuide** solves this by separating **neural perception** from **symbolic reasoning**:
+1. **Sensory Perception**: SingularityNET / ASI Cloud models parse noisy natural language observations and farmer field notes into structured facts.
+2. **Symbolic Decision Core**: Grounded in **MeTTa** declarative rules and the stateful **Omega** cognitive architecture. Recommendations (`IRRIGATE`, `WAIT`, `MONITOR`) are evaluated against explicit soil physics (FAO-56 Penman-Monteith ET0, crop coefficients, and depletion envelopes).
+3. **Auditability & Replay**: Every decision generates a step-by-step symbolic derivation proof and a tamper-proof **SHA-256 Replay Certificate** for reproducible verification.
+4. **Decision Supersession ("What Changed?")**: When new evidence arrives (e.g. storm clouds gather or a sensor spikes), the agent does not overwrite history. It links decisions in a cognitive supersession graph and shows the farmer exactly what changed.
+5. **The Agent That Grows Up**: Farmers can teach the agent custom agronomic rules (e.g., *"In sandy loam during flowering, pause irrigation if rain $\ge$ 65%"*), dynamically compiling them into active MeTTa rewrite rules.
 
 ---
 
@@ -20,23 +47,30 @@ AgriGuide is an adaptive agricultural decision-intelligence agent built around a
 Evidence → Belief → World State → Omega Memory → MeTTa Reasoning → Decision → Audit → Outcome → Learning → State Revision
 ```
 
-1. **Evidence**: Ingests sensor moisture telemetry, multi-provider weather forecasts (Open-Meteo), and qualitative farmer observations.
-2. **Belief & Conflict Detection**: Identifies sensory discrepancies between sources (e.g. weather forecast divergence) and applies confidence penalties.
-3. **World State**: Constructs a coherent real-time snapshot of the field, crop water demand, and reservoir constraints.
-4. **Omega Memory**: Tracks past decisions, maintains cognitive run context, and links decision supersessions.
-5. **MeTTa Reasoning Engine**: Evaluates declarative S-expressions from `metta/irrigation/rules.metta` and farmer custom rules.
-6. **Auditable Decision**: Produces recommendations (`IRRIGATE`, `WAIT`, `REASSESS`) with a full step-by-step symbolic proof.
-7. **What Changed? (Decision Diff)**: Visually compares superseded decisions side-by-side when new evidence triggers a revision.
-8. **The Agent That Grows Up**: Allows farmers to teach the agent custom field rules that override or extend baseline policies.
-9. **Closed-Loop Learning**: Compares ground truth outcomes (actual rainfall measured) to prior decisions, calibrating data source reliability over time.
+```mermaid
+graph TD
+    A["📡 Sensors & Open-Meteo Weather"] --> B["🌐 ASI Cloud Perception Layer"]
+    C["👨‍🌾 Farmer Field Observations"] --> B
+    B --> D["⚛️ Atomspace World Model (MeTTa)"]
+    D --> E["⚙️ MeTTa Symbolic Reasoning Engine"]
+    F["🧠 Omega Cognitive History"] --> E
+    G["📜 Farmer Custom Rules"] --> E
+    E --> H["✅ Auditable Decision (WAIT / IRRIGATE)"]
+    H --> I["🔍 What Changed? (Supersession Diff)"]
+    H --> J["🔐 SHA-256 Replay Certificate"]
+    H --> K["🌱 Physical Irrigation Actuation / Notification"]
+    K --> L["🌧 Ground Truth Rain Measurement"]
+    L --> M["📈 Closed-Loop Bayesian Reliability Calibration"]
+    M --> D
+```
 
 ---
 
 ## 🎓 BASIX MeTTa Omniversity Training Lineage
 
-AgriGuide directly scales the foundational concepts and programming challenges taught during the **BASIX MeTTa Curriculum (`mettatraining`)**:
+AgriGuide directly implements and scales the core concepts taught in the **BASIX MeTTa Curriculum**:
 
-| Curriculum Module | Core Concepts & Challenges | Direct Application in AgriGuide |
+| Curriculum Module | Core Concepts & Challenges | Direct Implementation in AgriGuide |
 | :--- | :--- | :--- |
 | **Module 1: Foundations** | • Syntax, Types & S-Expressions<br>• Pattern Matching Logic (`match &self`)<br>• Challenges 1–3: Accumulators (`sumIf`) | • Typed ontology in `metta/knowledge/agriculture.metta`<br>• Pattern matching over dynamic field states<br>• `sum-active-water-demand` higher-order accumulation |
 | **Module 2: Advanced Logic** | • Relational KBs (Challenge 4)<br>• Python Interop `py-atom` (Challenge 5)<br>• Range Guards & Transformers (Challenges 7–9) | • Digital twin knowledge graph (`world_model.py`)<br>• `hyperon.MeTTa()` runner integration (`metta_runner.py`)<br>• Agronomic safe root-zone moisture stress envelopes |
@@ -45,99 +79,96 @@ AgriGuide directly scales the foundational concepts and programming challenges t
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Capabilities
 
-- **Symbolic MeTTa Runtime**: Parses and evaluates `.metta` code files faithfully via an embedded symbolic S-expression engine, with native CLI subprocess fallback. Implements Atomspace pattern matching (`match &self`), unification, and typed declarative predicates directly aligned with the BASIX MeTTa training curriculum.
-- **MeTTa Counterfactual Trade-off Analysis**: Instead of just producing an isolated recommendation, the agent evaluates both candidate branches (`IRRIGATE` vs `WAIT`) in MeTTa, providing explicit comparative efficiency, risk ratings, and water-loss assessments.
-- **The Agent That Grows Up**: Interactive custom rule builder where farmers register field-specific rules (e.g., *"In sandy loam during flowering, pause irrigation if rain $\ge$ 65%"*).
-- **What Changed? (Decision Diff)**: Dedicated side-by-side inspection showing exactly why the agent changed its recommendation from `IRRIGATE` to `WAIT`.
-- **What-If Scenario Sandbox**: Interactive simulation sliders for soil moisture, forecast rain, and water reserves—deducing MeTTa results instantly without database mutation.
-- **Closed-Loop Learning & Calibration**: Tracks ground truth outcomes and adjusts Bayesian reliability scores across sensors, weather APIs, and farmer inputs.
-- **Multi-Field Support**: Pre-seeded with **Field A (Maize Flowering, Loam)** and **Field B (French Beans Vegetative, Sandy Loam)**.
+- **Symbolic MeTTa Runtime**: Evaluates declarative S-expressions natively with Atomspace pattern matching, unification, and typed declarative predicates.
+- **MeTTa Counterfactual Analysis**: Evaluates candidate branches (`IRRIGATE` vs `WAIT`), computing comparative efficiency, risk factors, and water-loss assessments.
+- **Decision Supersession ("What Changed?")**: Visually contrasts superseded recommendations side-by-side when new evidence updates field beliefs.
+- **"The Agent That Grows Up"**: Farmers can create custom rules in natural language or structured constraints, compiling directly into MeTTa rules.
+- **FAO-56 Agronomic Intelligence**: Integrates Penman-Monteith reference evapotranspiration (ET0), crop coefficients (Kc), and sensor flatline/spike anomaly detection.
+- **Closed-Loop Learning**: Updates sensor and forecast reliability weights based on verified ground-truth rainfall measurements.
+- **Deterministic Guardrails**: Independent valve lockouts, maximum duration clamps, and reservoir depletion ceilings that override any model hallucinations.
+
+---
+
+## 🧪 Verification & Benchmark Suite
+
+The codebase has undergone automated verification across unit, integration, and curriculum tests:
+
+```bash
+# Automated Test Suite (66/66 Passing)
+pytest backend/tests/ -q
+# Result: 66 passed in 26.68s (100% success rate)
+
+# BASIX MeTTa Curriculum & 10-Point Scientific Benchmark
+python3 scripts/verify_metta_curriculum.py
+# Result: ALL 6 MODULES VERIFIED & 10/10 SCIENTIFIC BENCHMARKS PASSED
+```
+
+### Scientific Benchmarks (10/10)
+- ✅ Critically Dry Field + Low Rain Outlook (Evidence Reasoning)
+- ✅ Sensor vs Satellite Telemetry Divergence (Conflict Resolution)
+- ✅ Unphysical Telemetry Leap Spike (18% $\rightarrow$ 91%) (Sensor Quality)
+- ✅ Stuck Frozen Telemetry Line (Sensor Quality)
+- ✅ Irrigate vs Wait Trade-Off Matrix (Counterfactual Reasoning)
+- ✅ Duration Safety Ceiling Clamping (60m $\rightarrow$ 30m) (Safety & Guardrails)
+- ✅ Physical Valve Lockout when Water Unavailable (Safety & Guardrails)
+- ✅ Leaching Prevention Under Heavy Rain (Agronomic Domain: Fertilizer)
+- ✅ Seedbed Too Dry For Germination (Agronomic Domain: Planting)
+- ✅ Physiological Maturity & Dry Field Window (Agronomic Domain: Harvest)
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Backend**: Python 3.12+ / FastAPI, SQLAlchemy, Pydantic, SQLite / PostgreSQL
-- **Symbolic AI**: MeTTa / Hyperon knowledge files under `metta/`, embedded symbolic S-expression interpreter
-- **Cognitive Orchestration**: Omega Agent adapter (`backend/app/services/omega.py`)
-- **Frontend**: React 18, Vite, TypeScript, Lucide Icons, clean CSS
-- **Testing**: Pytest with automated symbolic deduction, conflict, rule adaptation, and diff tests
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons (Deployed on **Vercel**)
+- **Backend API**: Python 3.11, FastAPI, SQLAlchemy, Pydantic, Uvicorn (Deployed on **Render**)
+- **Symbolic AI**: MeTTa / Hyperon S-Expression Engine (`metta/`), Atomspace Knowledge Graph
+- **Cognitive Orchestration**: Omega Agent State Machine (`backend/app/services/omega.py`)
+- **Neural Perception**: SingularityNET / ASI Cloud OpenAI-compatible LLM adapter (`backend/app/services/llm.py`)
+- **Deployment**: Multi-stage Docker container with dynamic `$PORT` routing and automated SQLite seed migrations
 
 ---
 
-## 💻 Quickstart (Run Locally)
+## 💻 Local Development
 
-### 1. Backend Setup & Seed
+### 1. Backend Setup
 ```bash
-# From repository root:
-python3 scripts/seed_demo.py
+# Clone the repository
+git clone https://github.com/Edwin420s/AgriGuide.git
+cd AgriGuide
 
-# Start FastAPI backend:
-cd backend
-uvicorn app.main:app --reload --port 8000
+# Install dependencies and start FastAPI backend
+pip install -r backend/requirements.txt
+python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 ```
-Backend API will be live at `http://localhost:8000` (docs at `http://localhost:8000/docs`).
+Backend API will be accessible at `http://localhost:8000` (Swagger UI at `/docs`).
 
 ### 2. Frontend Setup
 ```bash
-# In another terminal:
+# In a new terminal window:
 cd frontend
 npm install
 npm run dev
 ```
 Open `http://localhost:5173` in your browser.
 
-### 3. Run Test Suite & Curriculum Verification
+### 3. Docker Compose
 ```bash
-# Run full unit and integration tests (28/28 tests passing):
-pytest backend/tests/ -v
-
-# Run the BASIX MeTTa Curriculum & 10-Point Scientific Benchmark Verification:
-python3 scripts/verify_metta_curriculum.py
+docker compose up --build
 ```
+Access frontend at `http://localhost:5173` and backend at `http://localhost:8000`.
 
 ---
 
-## 🧪 Demo Walkthrough (3-Minute Tour)
+## 📄 Key Documentation & Deliverables
 
-1. **Inspect Field A (Maize Flowering)**: Observe initial low soil moisture (16.5%) and how the agent initially recommended `IRRIGATE`.
-2. **Simulate Rain / Weather Alert**: Click **"Simulate Storm Forecast (82%)"** or enter a qualitative farmer observation.
-3. **Inspect "What Changed? (Diff)"**: Navigate to the **What Changed?** tab to view the side-by-side transition from `IRRIGATE` $\rightarrow$ `WAIT` as expected rain makes irrigation inefficient.
-4. **The Agent That Grows Up**: Navigate to the **Rules** tab, create a custom farmer rule, and observe the agent adopting your local farming knowledge!
-5. **Interactive Sandbox**: Go to **What-If Sandbox** to test arbitrary moisture and rain combinations against the MeTTa engine.
-6. **Explainable Audit**: View the exact derivation proof steps under **Explainable Audit**.
-7. **Close the Loop**: Log ground truth rainfall under **Closed-Loop Learning** to watch source reliability update.
-
----
-
-## 📄 Submission Deliverables & Documentation
-
-- **AI Disclosure Statement**: [AI_DISCLOSURE.md](AI_DISCLOSURE.md) *(Mandatory declaration of AI tooling & architectural integrity)*
-- **Sample Reasoning Transcript & Memory Record**: [docs/sample_reasoning_transcript.md](docs/sample_reasoning_transcript.md) *(Full step-by-step derivation proof & Omega episodic memory trace)*
-- **Architecture Deep Dive**: [docs/architecture.md](docs/architecture.md)
-- **Demo Walkthrough Guide**: [docs/demo.md](docs/demo.md)
-- **Omega Integration Spec**: [docs/omega-integration.md](docs/omega-integration.md)
-- **API Reference**: [docs/api.md](docs/api.md)
-- **Build Status**: [docs/build-status.md](docs/build-status.md)
-
----
-
-## 🔮 What We Would Build Next
-
-For the Solo Track assignment, we proved the single critical feature: **One Agent Producing an Auditable Decision with Stateful Memory and Counterfactual Trade-off Analysis**.
-
-Here is what we would build next for the subsequent BASIX / SingularityNET phase:
-
-1. **Hardware IoT Edge Deployment (ESP32 / AgriVerde)**:
-   - Connect physical ESP32 soil capacitive sensors and micro-weather stations directly to AgriGuide via MQTT / LoRaWAN, transforming raw physical telemetry directly into active Atomspace facts.
-2. **Multi-Source Bayesian Forecast Calibration**:
-   - Rather than simple weight shifts, deploy continuous Kalman / Bayesian filtering to compare real hyper-local rain gauge readings against regional forecast grids, producing a locally calibrated precipitation probability.
-3. **Multi-Decision Farming Spectrum**:
-   - Extend the declarative MeTTa rule base beyond irrigation to fertilizer application timing (preventing nitrate leaching before storms), pest risk mitigation, and optimal harvesting windows.
-4. **BGI / NuNet Decentralized Compute Integration**:
-   - Deploy the Omega agent cognitive cycle onto the NuNet decentralized compute framework and publish auditable agricultural recommendations onto the SingularityNET Marketplace.
+- **[AI Disclosure Statement](AI_DISCLOSURE.md)**: Full declaration of AI tooling assistance and human authorship.
+- **[Cloud Deployment Guide](DEPLOYMENT.md)**: Detailed deployment specifications for Vercel, Render, Railway, and Fly.io.
+- **[Sample Reasoning Transcript](docs/sample_reasoning_transcript.md)**: Full MeTTa proof derivation & Omega memory trace.
+- **[Architecture Specification](docs/architecture.md)**: Complete system design and neural-symbolic separation model.
+- **[Omega Integration Spec](docs/omega-integration.md)**: Cognitive history, episodic states, and supersession links.
+- **[FAO-56 Agronomic Spec](docs/FAO56_PENMAN_MONTEITH_SPEC.md)**: Evapotranspiration physics and sensor quality controls.
 
 ---
 
@@ -146,8 +177,5 @@ Here is what we would build next for the subsequent BASIX / SingularityNET phase
 > In strict adherence to the BASIX Omniversity Hackathon Solo Track rules:
 >
 > - **Google Antigravity Agentic Assistant** was utilized for code scaffolding, type definitions, test suite generation, and frontend component modularization.
-> - **Human Author & Domain Engineering**: All domain knowledge models, agricultural decision heuristics (loam soil moisture thresholds, flowering stage water demand, reservoir constraints), MeTTa S-expression syntax design, and database schema architectures were authored, verified, and directed by Edwin (Nexora AI).
+> - **Human Author & Domain Engineering**: All domain knowledge models, agricultural decision heuristics (loam soil moisture thresholds, flowering stage water demand, reservoir constraints), MeTTa S-expression syntax design, and database schema architectures were authored, verified, and directed by Edwin Mwiti (Nexora AI).
 > - **Zero Black-Box LLM Hallucinations in Reasoning**: The core decision boundaries and counterfactual derivations are evaluated deterministically using MeTTa S-expression rewrite rules (`(= (agriguide-decision ...) ...)`) and the Omega agent runtime, rather than presenting ungrounded LLM completions as the decision engine.
->
-> *For the full detailed disclosure, see [AI_DISCLOSURE.md](AI_DISCLOSURE.md).*
-
