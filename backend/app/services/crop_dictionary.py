@@ -161,7 +161,7 @@ CROP_MULTILINGUAL_CATALOG: list[dict[str, Any]] = [
         "name": "tea",
         "name_en": "Tea",
         "name_sw": "Chai",
-        "aliases": ["tea", "chai"],
+        "aliases": ["tea", "chai", "majani ya chai"],
         "category": "cash_crop",
         "default_kc_initial": 0.90,
         "default_kc_mid": 1.10,
