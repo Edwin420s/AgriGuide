@@ -1,24 +1,16 @@
 # Contributing to AgriGuide
 
-Thank you for your interest in contributing to **AgriGuide: Adaptive Neural-Symbolic Agricultural Decision Agent**!
+Thank you for your interest in contributing to AgriGuide.
 
-## Development Guidelines
+## Guiding Principles
+1. Determinism: Agricultural decisions must be grounded in verified MeTTa symbolic rules.
+2. Safety: Hard guardrails (maximum duration, valve lockouts) must never be bypassed.
+3. Auditability: Any change to reasoning logic must include an updated test case and proof assertion.
 
-### 1. Code Quality & Standards
-- Python backend code adheres to PEP 8, formatted with Black/Ruff, and typed where appropriate.
-- Frontend code is written in strict TypeScript with React functional components and Tailwind CSS.
-- Keep frontend production bundles lightweight (<100 kB gzipped).
-
-### 2. MeTTa Rule Authoring Standards
-- All symbolic knowledge bases are stored in `metta/knowledge/*.metta`.
-- Every rule must specify:
-  1. Strict type signatures `(: rule_name (-> InputType OutputType))`
-  2. Pattern reduction equations `(= (rule_name $var) ...)`
-  3. Grounding against empirical agronomic literature (e.g. FAO-56, KALRO, CGIAR).
-
-### 3. Verification Protocol
-Before submitting a pull request, run the unified verification script:
-```bash
-./scripts/run_all_verifications.sh
-```
-Ensure all 54 unit tests and curriculum benchmarks pass with 100% success.
+## Development Workflow
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feat/your-feature`.
+3. Install dependencies: `pip install -r backend/requirements.txt` and `npm --prefix frontend install`.
+4. Run the automated test suite: `pytest backend/tests/ -q`.
+5. Run the curriculum verification: `python3 scripts/verify_metta_curriculum.py`.
+6. Submit a pull request with clear description and test evidence.
